@@ -11,6 +11,7 @@ export default function Login() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { login, user, logout, loadUser } = useAuth();
@@ -120,16 +121,194 @@ export default function Login() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f4d03f' }}>
+      <style jsx>{`
+        .mobile-menu-button {
+          display: none;
+          background: none;
+          border: none;
+          padding: 0.5rem;
+          cursor: pointer;
+          color: #374151;
+        }
+
+        .mobile-menu-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 40;
+          display: none;
+        }
+
+        .mobile-menu-overlay.open {
+          display: block;
+        }
+
+        .mobile-menu {
+          position: fixed;
+          top: 0;
+          right: -100%;
+          width: 280px;
+          height: 100vh;
+          background: #f4d03f;
+          z-index: 50;
+          transition: right 0.3s ease-in-out;
+          padding: 1rem;
+          box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu.open {
+          right: 0;
+        }
+
+        .mobile-menu-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu-close {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          color: #374151;
+          cursor: pointer;
+          padding: 0.5rem;
+        }
+
+        .mobile-menu-items {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .mobile-menu-item {
+          color: #374151;
+          text-decoration: none;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          transition: background-color 0.2s ease;
+        }
+
+        .mobile-menu-item:hover {
+          background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .mobile-menu-item.active {
+          background-color: rgba(79, 70, 229, 0.1);
+          color: #4f46e5;
+          font-weight: bold;
+        }
+
+        .mobile-logout-button {
+          background: #ef4444;
+          color: white;
+          border: none;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          cursor: pointer;
+          margin-top: 1rem;
+          width: 100%;
+        }
+
+        .mobile-logout-button:hover {
+          background: #dc2626;
+        }
+
+        @media (max-width: 1024px) {
+          .desktop-menu {
+            display: none;
+          }
+
+          .mobile-menu-button {
+            display: block;
+          }
+
+          .nav-logo h1 {
+            font-size: 1.25rem !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .nav-logo h1 {
+            font-size: 1.125rem !important;
+          }
+
+          .login-form-container {
+            padding: 1rem !important;
+          }
+
+          .login-form-card {
+            max-width: 100% !important;
+            margin: 0 1rem !important;
+          }
+
+          .login-title {
+            font-size: 2rem !important;
+          }
+
+          .login-input {
+            padding: 1rem !important;
+            font-size: 1rem !important;
+          }
+
+          .login-button {
+            padding: 1rem !important;
+            font-size: 1rem !important;
+          }
+
+          .google-signin-button {
+            padding: 1rem !important;
+            font-size: 1rem !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .nav-logo h1 {
+            font-size: 1rem !important;
+          }
+
+          .login-form-container {
+            padding: 0.5rem !important;
+          }
+
+          .login-title {
+            font-size: 1.75rem !important;
+          }
+
+          .login-subtitle {
+            font-size: 0.875rem !important;
+          }
+
+          .login-input {
+            padding: 0.875rem !important;
+          }
+
+          .login-button {
+            padding: 0.875rem !important;
+          }
+        }
+      `}</style>
+
       {/* Navigation Bar */}
       <nav className="shadow-lg" style={{ background: '#f4d03f' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center nav-logo">
               <a href="/" style={{ textDecoration: 'none' }}>
                 <h1 className="text-2xl font-bold text-indigo-600" style={{ fontFamily: 'Myriad Pro, Arial, sans-serif', cursor: 'pointer' }}>AiStudio7.com</h1>
               </a>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Desktop Menu */}
+            <div className="desktop-menu flex items-center space-x-4">
               <a 
                 href="/" 
                 className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
@@ -204,21 +383,129 @@ export default function Login() {
                 </>
               )}
             </div>
+
+            {/* Mobile Menu Button */}
+            <button 
+              className="mobile-menu-button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
           </div>
         </div>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="mobile-menu-header">
+          <span style={{ fontWeight: 'bold', color: '#4f46e5' }}>Menu</span>
+          <button 
+            className="mobile-menu-close"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="mobile-menu-items">
+          <a 
+            href="/" 
+            className={`mobile-menu-item ${pathname === '/' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Home
+          </a>
+          <a 
+            href="/services"
+            className={`mobile-menu-item ${pathname === '/services' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Services
+          </a>
+          <a 
+            href="/client-portal"
+            className={`mobile-menu-item ${pathname === '/client-portal' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            My Portal
+          </a>
+          <a 
+            href="/service-request"
+            className={`mobile-menu-item ${pathname === '/service-request' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Service Request
+          </a>
+          <a 
+            href="/sns-settings"
+            className={`mobile-menu-item ${pathname === '/sns-settings' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            SNS Settings
+          </a>
+          {user && user.role === 'ADMIN' && (
+            <a 
+              href="/admin"
+              className={`mobile-menu-item ${pathname === '/admin' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Admin
+            </a>
+          )}
+          {user ? (
+            <button 
+              className="mobile-logout-button"
+              onClick={() => {
+                logout();
+                setMobileMenuOpen(false);
+              }}
+            >
+              Logout
+            </button>
+          ) : (
+            <>
+              <a 
+                href="/login"
+                className={`mobile-menu-item ${pathname === '/login' ? 'active' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Login
+              </a>
+              <a 
+                href="/register"
+                className={`mobile-menu-item ${pathname === '/register' ? 'active' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Register
+              </a>
+            </>
+          )}
+        </div>
+      </div>
       
       {/* Login Form */}
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+      <div className="login-form-container flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="login-form-card max-w-md w-full space-y-8">
         <div>
           <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-indigo-100">
             <span className="text-2xl">🎨</span>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="login-title mt-6 text-center text-3xl font-extrabold text-gray-900">
             NavaAI Studio
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="login-subtitle mt-2 text-center text-sm text-gray-600">
             Sign in to your account
           </p>
         </div>
@@ -240,7 +527,7 @@ export default function Login() {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="login-input appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
@@ -256,7 +543,7 @@ export default function Login() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="login-input appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleChange}
@@ -288,7 +575,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="login-button group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
@@ -317,7 +604,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                className="google-signin-button w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
               >
                 <span className="mr-2">🔑</span>
                 Sign in with Google
