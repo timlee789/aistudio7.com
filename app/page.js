@@ -12,6 +12,7 @@ export default function Home() {
   const [modalImage, setModalImage] = useState({ src: '', alt: '', label: '' });
   const [galleryItems, setGalleryItems] = useState([]);
   const [bannerData, setBannerData] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -334,15 +335,27 @@ export default function Home() {
         }
 
         @media (max-width: 768px) {
-          .category-menu ul {
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 4px;
+          .main-banner {
+            height: 300px;
+            margin: 20px auto 10px auto;
           }
           
-          .category-menu a {
-            padding: 10px 16px;
-            font-size: 13px;
+          .page-title {
+            padding: 10px 20px 40px 20px;
+          }
+          
+          .page-title h1 {
+            font-size: 2.5rem;
+          }
+          
+          .subtitle {
+            font-size: 1rem;
+            padding: 0 10px;
+          }
+          
+          .section-title h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
           }
           
           .gallery-grid {
@@ -351,20 +364,41 @@ export default function Home() {
           }
           
           .gallery-container {
-            padding: 20px 20px 40px 20px;
+            padding: 20px 20px 60px 20px;
           }
           
-          .page-title h1 {
-            font-size: 2.5rem;
+          .nav-content {
+            height: 3.5rem;
+          }
+          
+          .logo-section h1 {
+            font-size: 1.25rem !important;
           }
         }
 
         @media (max-width: 480px) {
-          .category-menu ul {
-            flex-direction: column;
-            width: 100%;
-            max-width: 300px;
-            margin: 0 auto;
+          .main-banner {
+            height: 250px;
+            margin: 15px auto 10px auto;
+          }
+          
+          .page-title {
+            padding: 10px 15px 30px 15px;
+          }
+          
+          .page-title h1 {
+            font-size: 2rem;
+          }
+          
+          .subtitle {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            padding: 0 5px;
+          }
+          
+          .section-title h2 {
+            font-size: 1.75rem;
+            margin-bottom: 15px;
           }
           
           .gallery-grid {
@@ -372,8 +406,21 @@ export default function Home() {
             gap: 15px;
           }
           
-          .page-title h1 {
-            font-size: 2rem;
+          .gallery-container {
+            padding: 15px 15px 50px 15px;
+          }
+          
+          .nav-content {
+            height: 3rem;
+          }
+          
+          .logo-section h1 {
+            font-size: 1.125rem !important;
+          }
+          
+          .modal-content {
+            max-width: 95vw;
+            max-height: 85vh;
           }
         }
 
@@ -429,6 +476,116 @@ export default function Home() {
           align-items: center;
           gap: 1rem;
         }
+
+        .mobile-menu-button {
+          display: none;
+          background: none;
+          border: none;
+          padding: 0.5rem;
+          cursor: pointer;
+          color: #374151;
+        }
+
+        .mobile-menu-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 40;
+          display: none;
+        }
+
+        .mobile-menu-overlay.open {
+          display: block;
+        }
+
+        .mobile-menu {
+          position: fixed;
+          top: 0;
+          right: -100%;
+          width: 280px;
+          height: 100vh;
+          background: #f4d03f;
+          z-index: 50;
+          transition: right 0.3s ease-in-out;
+          padding: 1rem;
+          box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu.open {
+          right: 0;
+        }
+
+        .mobile-menu-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu-close {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          color: #374151;
+          cursor: pointer;
+          padding: 0.5rem;
+        }
+
+        .mobile-menu-items {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .mobile-menu-item {
+          color: #374151;
+          text-decoration: none;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          transition: background-color 0.2s ease;
+        }
+
+        .mobile-menu-item:hover {
+          background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .mobile-menu-item.active {
+          background-color: rgba(79, 70, 229, 0.1);
+          color: #4f46e5;
+          font-weight: bold;
+        }
+
+        .mobile-logout-button {
+          background: #ef4444;
+          color: white;
+          border: none;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          cursor: pointer;
+          margin-top: 1rem;
+          width: 100%;
+        }
+
+        .mobile-logout-button:hover {
+          background: #dc2626;
+        }
+
+        @media (max-width: 1024px) {
+          .menu-section {
+            display: none;
+          }
+
+          .mobile-menu-button {
+            display: block;
+          }
+        }
       `}</style>
 
       <nav style={{ background: '#f4d03f' }}>
@@ -439,6 +596,8 @@ export default function Home() {
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4f46e5', margin: 0, fontFamily: 'Myriad Pro, Arial, sans-serif', cursor: 'pointer' }}>AiStudio7.com</h1>
               </a>
             </div>
+            
+            {/* Desktop Menu */}
             <div className="menu-section">
               <a 
                 href="/" 
@@ -518,9 +677,108 @@ export default function Home() {
                 <a href="/login">Login</a>
               )}
             </div>
+
+            {/* Mobile Menu Button */}
+            <button 
+              className="mobile-menu-button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
           </div>
         </div>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="mobile-menu-header">
+          <span style={{ fontWeight: 'bold', color: '#4f46e5' }}>Menu</span>
+          <button 
+            className="mobile-menu-close"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="mobile-menu-items">
+          <a 
+            href="/" 
+            className={`mobile-menu-item ${pathname === '/' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Home
+          </a>
+          <a 
+            href="/services"
+            className={`mobile-menu-item ${pathname === '/services' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Services
+          </a>
+          <a 
+            href="/client-portal"
+            className={`mobile-menu-item ${pathname === '/client-portal' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            My Portal
+          </a>
+          <a 
+            href="/service-request"
+            className={`mobile-menu-item ${pathname === '/service-request' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Service Request
+          </a>
+          <a 
+            href="/sns-settings"
+            className={`mobile-menu-item ${pathname === '/sns-settings' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            SNS Settings
+          </a>
+          {user && user.role === 'ADMIN' && (
+            <a 
+              href="/admin"
+              className={`mobile-menu-item ${pathname === '/admin' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Admin
+            </a>
+          )}
+          {user ? (
+            <button 
+              className="mobile-logout-button"
+              onClick={() => {
+                logout();
+                setMobileMenuOpen(false);
+              }}
+            >
+              Logout
+            </button>
+          ) : (
+            <a 
+              href="/login"
+              className={`mobile-menu-item ${pathname === '/login' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Login
+            </a>
+          )}
+        </div>
+      </div>
       
       {/* Main Banner */}
       <div className="main-banner">

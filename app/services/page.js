@@ -8,6 +8,7 @@ export default function Services() {
   const pathname = usePathname();
   const router = useRouter();
   const [processing, setProcessing] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 
 
@@ -67,15 +68,218 @@ export default function Services() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f4d03f' }}>
+      <style jsx>{`
+        .mobile-menu-button {
+          display: none;
+          background: none;
+          border: none;
+          padding: 0.5rem;
+          cursor: pointer;
+          color: #374151;
+        }
+
+        .mobile-menu-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 40;
+          display: none;
+        }
+
+        .mobile-menu-overlay.open {
+          display: block;
+        }
+
+        .mobile-menu {
+          position: fixed;
+          top: 0;
+          right: -100%;
+          width: 280px;
+          height: 100vh;
+          background: #f4d03f;
+          z-index: 50;
+          transition: right 0.3s ease-in-out;
+          padding: 1rem;
+          box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu.open {
+          right: 0;
+        }
+
+        .mobile-menu-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu-close {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          color: #374151;
+          cursor: pointer;
+          padding: 0.5rem;
+        }
+
+        .mobile-menu-items {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .mobile-menu-item {
+          color: #374151;
+          text-decoration: none;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          transition: background-color 0.2s ease;
+        }
+
+        .mobile-menu-item:hover {
+          background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .mobile-menu-item.active {
+          background-color: rgba(79, 70, 229, 0.1);
+          color: #4f46e5;
+          font-weight: bold;
+        }
+
+        .mobile-logout-button {
+          background: #ef4444;
+          color: white;
+          border: none;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          cursor: pointer;
+          margin-top: 1rem;
+          width: 100%;
+        }
+
+        .mobile-logout-button:hover {
+          background: #dc2626;
+        }
+
+        @media (max-width: 1024px) {
+          .desktop-menu {
+            display: none;
+          }
+
+          .mobile-menu-button {
+            display: block;
+          }
+
+          .nav-logo h1 {
+            font-size: 1.25rem !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .nav-logo h1 {
+            font-size: 1.125rem !important;
+          }
+
+          main {
+            padding: 1rem !important;
+          }
+
+          .service-grid {
+            grid-template-columns: 1fr !important;
+            gap: 2rem !important;
+          }
+
+          .pricing-title {
+            font-size: 2rem !important;
+            margin-bottom: 1rem !important;
+          }
+
+          .pricing-subtitle {
+            font-size: 1rem !important;
+            padding: 0 1rem !important;
+          }
+
+          .service-card {
+            padding: 1.5rem !important;
+          }
+
+          .service-card h3 {
+            font-size: 1.5rem !important;
+          }
+
+          .price-text {
+            font-size: 2.5rem !important;
+          }
+
+          .other-services-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1.5rem !important;
+          }
+
+          .other-service-card {
+            padding: 1.25rem !important;
+          }
+
+          .other-service-title {
+            font-size: 1.125rem !important;
+          }
+
+          .other-service-price {
+            font-size: 1.5rem !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .nav-logo h1 {
+            font-size: 1rem !important;
+          }
+
+          main {
+            padding: 0.5rem !important;
+          }
+
+          .pricing-title {
+            font-size: 1.75rem !important;
+          }
+
+          .service-card {
+            padding: 1.25rem !important;
+          }
+
+          .service-card h3 {
+            font-size: 1.25rem !important;
+          }
+
+          .price-text {
+            font-size: 2rem !important;
+          }
+
+          .service-button {
+            padding: 1rem !important;
+            font-size: 1rem !important;
+          }
+        }
+      `}</style>
+
       <nav className="shadow-lg" style={{ background: '#f4d03f' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center nav-logo">
               <a href="/" style={{ textDecoration: 'none' }}>
                 <h1 className="text-2xl font-bold text-indigo-600" style={{ fontFamily: 'Myriad Pro, Arial, sans-serif', cursor: 'pointer' }}>AiStudio7.com</h1>
               </a>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Desktop Menu */}
+            <div className="desktop-menu flex items-center space-x-4">
               <a 
                 href="/" 
                 className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
@@ -151,9 +355,108 @@ export default function Services() {
                 </a>
               )}
             </div>
+
+            {/* Mobile Menu Button */}
+            <button 
+              className="mobile-menu-button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
           </div>
         </div>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="mobile-menu-header">
+          <span style={{ fontWeight: 'bold', color: '#4f46e5' }}>Menu</span>
+          <button 
+            className="mobile-menu-close"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="mobile-menu-items">
+          <a 
+            href="/" 
+            className={`mobile-menu-item ${pathname === '/' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Home
+          </a>
+          <a 
+            href="/services"
+            className={`mobile-menu-item ${pathname === '/services' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Services
+          </a>
+          <a 
+            href="/client-portal"
+            className={`mobile-menu-item ${pathname === '/client-portal' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            My Portal
+          </a>
+          <a 
+            href="/service-request"
+            className={`mobile-menu-item ${pathname === '/service-request' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Service Request
+          </a>
+          <a 
+            href="/sns-settings"
+            className={`mobile-menu-item ${pathname === '/sns-settings' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            SNS Settings
+          </a>
+          {user && user.role === 'ADMIN' && (
+            <a 
+              href="/admin"
+              className={`mobile-menu-item ${pathname === '/admin' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Admin
+            </a>
+          )}
+          {user ? (
+            <button 
+              className="mobile-logout-button"
+              onClick={() => {
+                logout();
+                setMobileMenuOpen(false);
+              }}
+            >
+              Logout
+            </button>
+          ) : (
+            <a 
+              href="/login"
+              className={`mobile-menu-item ${pathname === '/login' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Login
+            </a>
+          )}
+        </div>
+      </div>
 
       <main className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
 
@@ -161,20 +464,20 @@ export default function Services() {
         {/* Pricing Plans */}
         <div className="mb-20">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Service Plans</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="pricing-title text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Service Plans</h2>
+            <p className="pricing-subtitle text-lg text-gray-600 max-w-2xl mx-auto">
               Choose the perfect plan to accelerate your business growth with AI-powered content
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="service-grid grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
             
             {/* Starter Plan */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:transform hover:-translate-y-1">
+            <div className="service-card bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:transform hover:-translate-y-1">
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Starter Plan</h3>
                 <div className="mb-6">
-                  <span className="text-5xl font-bold text-indigo-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$99</span>
+                  <span className="price-text text-5xl font-bold text-indigo-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$99</span>
                   <span className="text-lg text-gray-500 ml-2">/month</span>
                 </div>
                 <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full text-sm font-medium inline-block">
@@ -241,7 +544,7 @@ export default function Services() {
                   });
                 }}
                 disabled={processing === 'Starter Plan'}
-                className="w-full bg-indigo-600 text-white py-4 px-6 rounded-xl hover:bg-indigo-700 transition-colors font-bold text-lg shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="service-button w-full bg-indigo-600 text-white py-4 px-6 rounded-xl hover:bg-indigo-700 transition-colors font-bold text-lg shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {processing === 'Starter Plan' ? (
                   <div className="flex items-center justify-center">
@@ -255,7 +558,7 @@ export default function Services() {
             </div>
 
             {/* Growth Plan */}
-            <div className="bg-white rounded-2xl shadow-xl border-2 border-purple-200 p-8 relative hover:shadow-2xl transition-all duration-300 hover:transform hover:-translate-y-1 transform scale-105">
+            <div className="service-card bg-white rounded-2xl shadow-xl border-2 border-purple-200 p-8 relative hover:shadow-2xl transition-all duration-300 hover:transform hover:-translate-y-1 transform scale-105">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
                   Most Popular
@@ -265,7 +568,7 @@ export default function Services() {
               <div className="text-center mb-8 mt-4">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Growth Plan</h3>
                 <div className="mb-6">
-                  <span className="text-5xl font-bold text-purple-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$149</span>
+                  <span className="price-text text-5xl font-bold text-purple-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$149</span>
                   <span className="text-lg text-gray-500 ml-2">/month</span>
                 </div>
                 <div className="bg-purple-50 text-purple-700 px-4 py-2 rounded-full text-sm font-medium inline-block">
@@ -332,7 +635,7 @@ export default function Services() {
                   });
                 }}
                 disabled={processing === 'Growth Plan'}
-                className="w-full bg-purple-600 text-white py-4 px-6 rounded-xl hover:bg-purple-700 transition-colors font-bold text-lg shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="service-button w-full bg-purple-600 text-white py-4 px-6 rounded-xl hover:bg-purple-700 transition-colors font-bold text-lg shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {processing === 'Growth Plan' ? (
                   <div className="flex items-center justify-center">
@@ -346,11 +649,11 @@ export default function Services() {
             </div>
 
             {/* Pro Marketing Plan */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:transform hover:-translate-y-1">
+            <div className="service-card bg-white rounded-2xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 hover:transform hover:-translate-y-1">
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Pro Marketing Plan</h3>
                 <div className="mb-6">
-                  <span className="text-5xl font-bold text-orange-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
+                  <span className="price-text text-5xl font-bold text-orange-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
                   <span className="text-lg text-gray-500 ml-2">/month</span>
                 </div>
                 <div className="bg-orange-50 text-orange-700 px-4 py-2 rounded-full text-sm font-medium inline-block">
@@ -417,7 +720,7 @@ export default function Services() {
                   });
                 }}
                 disabled={processing === 'Pro Marketing Plan'}
-                className="w-full bg-orange-600 text-white py-4 px-6 rounded-xl hover:bg-orange-700 transition-colors font-bold text-lg shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="service-button w-full bg-orange-600 text-white py-4 px-6 rounded-xl hover:bg-orange-700 transition-colors font-bold text-lg shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {processing === 'Pro Marketing Plan' ? (
                   <div className="flex items-center justify-center">
@@ -446,18 +749,18 @@ export default function Services() {
         {/* Other Services */}
         <div className="mb-20">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Other Services</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="pricing-title text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Other Services</h2>
+            <p className="pricing-subtitle text-lg text-gray-600 max-w-2xl mx-auto">
               Additional professional services to complement your content strategy
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+          <div className="other-services-grid grid md:grid-cols-2 gap-6 max-w-6xl mx-auto">
             
             {/* Menu, Flyer, Poster Design */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+            <div className="other-service-card bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                <h3 className="other-service-title text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                   Menu・Flyer・Poster Design
                 </h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
@@ -465,7 +768,7 @@ export default function Services() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$99</span>
+                    <span className="other-service-price text-2xl font-bold text-indigo-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$99</span>
                     <span className="text-gray-500 text-sm ml-1">/piece</span>
                   </div>
                   <button 
@@ -496,9 +799,9 @@ export default function Services() {
 
 
             {/* Product/Service Photography */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+            <div className="other-service-card bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                <h3 className="other-service-title text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                   Product/Service Photography
                 </h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
@@ -506,7 +809,7 @@ export default function Services() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-green-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
+                    <span className="other-service-price text-2xl font-bold text-green-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
                     <span className="text-gray-500 text-sm ml-1">/session</span>
                   </div>
                   <button 
@@ -536,9 +839,9 @@ export default function Services() {
             </div>
 
             {/* SNS Account Setup */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+            <div className="other-service-card bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                <h3 className="other-service-title text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                   SNS Account Initial Setup
                 </h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
@@ -546,7 +849,7 @@ export default function Services() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-blue-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$59</span>
+                    <span className="other-service-price text-2xl font-bold text-blue-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$59</span>
                     <span className="text-gray-500 text-sm ml-1">/account</span>
                   </div>
                   <button 
@@ -576,9 +879,9 @@ export default function Services() {
             </div>
 
             {/* Story & Reels Production */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+            <div className="other-service-card bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                <h3 className="other-service-title text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                   Story・Reels Focused Production
                 </h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
@@ -586,7 +889,7 @@ export default function Services() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-pink-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$49</span>
+                    <span className="other-service-price text-2xl font-bold text-pink-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$49</span>
                     <span className="text-gray-500 text-sm ml-1">/video</span>
                   </div>
                   <button 
@@ -616,9 +919,9 @@ export default function Services() {
             </div>
 
             {/* Website Landing Page */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+            <div className="other-service-card bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                <h3 className="other-service-title text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                   Website Landing Page Creation
                 </h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
@@ -626,7 +929,7 @@ export default function Services() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-teal-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$249</span>
+                    <span className="other-service-price text-2xl font-bold text-teal-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$249</span>
                     <span className="text-gray-500 text-sm ml-1">(one-time)</span>
                   </div>
                   <button 
@@ -656,9 +959,9 @@ export default function Services() {
             </div>
 
             {/* Event Promotion Package */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+            <div className="other-service-card bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                <h3 className="other-service-title text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                   Event Promotion Package
                 </h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
@@ -666,7 +969,7 @@ export default function Services() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-red-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
+                    <span className="other-service-price text-2xl font-bold text-red-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
                     <span className="text-gray-500 text-sm ml-1">/package</span>
                   </div>
                   <button 
