@@ -9,106 +9,21 @@ export default function Services() {
   const router = useRouter();
   const [processing, setProcessing] = useState(null);
 
-  // Debug user state when component loads or updates
-  useEffect(() => {
-    console.log('Services page: Component update - User:', user, 'Loading:', loading);
-    if (typeof document !== 'undefined') {
-      console.log('Services page: All cookies:', document.cookie);
-    }
-  }, [user, loading]);
 
-  // Test function to manually check authentication
-  const testAuth = async () => {
-    console.log('🧪 === Manual Auth Test ===');
-    console.log('👤 Current user state:', user);
-    console.log('⏳ Loading state:', loading);
-    console.log('🍪 Document cookies:', typeof document !== 'undefined' ? document.cookie : 'N/A (SSR)');
-    
-    try {
-      console.log('🔍 Testing Profile API...');
-      const response = await fetch('/api/user/profile', {
-        credentials: 'include'
-      });
-      console.log('📡 Profile API status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Profile API data:', data);
-      } else {
-        const errorData = await response.json();
-        console.log('❌ Profile API error:', errorData);
-      }
-    } catch (error) {
-      console.log('💥 Profile API fetch error:', error);
-    }
-
-    // Also test payment API directly
-    try {
-      console.log('🔍 Testing Payment API...');
-      const response = await fetch('/api/payments/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          serviceType: 'PLAN',
-          serviceName: 'Test Plan',
-          amount: 1,
-          serviceDetails: { test: true }
-        }),
-      });
-      console.log('📡 Payment API status:', response.status);
-      const data = await response.json();
-      console.log('📊 Payment API response:', data);
-    } catch (error) {
-      console.log('💥 Payment API fetch error:', error);
-    }
-
-    console.log('🏁 === End Auth Test ===');
-  };
 
   const handlePayment = async (serviceType, serviceName, amount, serviceDetails = {}) => {
-    console.log('🚨🚨🚨 HANDLE PAYMENT FUNCTION CALLED 🚨🚨🚨');
-    console.log('💳 ======= PAYMENT BUTTON CLICKED =======');
-    console.log('👤 Services: Current user:', user ? user.email : 'null');
-    console.log('⏳ Services: Loading state:', loading);
-    console.log('🎯 Services: Payment details:', { serviceType, serviceName, amount });
-    
-    // 실제 결제 로직 실행
-    console.log('🔍 Proceeding with actual payment logic...');
     
     // If still loading, wait
     if (loading) {
-      console.log('⏳ Services: Still loading, please wait...');
       alert('Loading user data, please wait a moment and try again.');
       return;
     }
     
     // If no user, redirect to login
     if (!user) {
-      console.log('❌ Services: No user found, redirecting to login');
-      console.log('🔴 Services: REDIRECTING TO LOGIN - NO USER');
       router.push('/login');
       return;
     }
-
-    // User exists, proceed with payment
-    console.log('✅ Services: User authenticated, proceeding with payment');
-    
-    // 테스트: API 호출 없이 직접 결제 페이지로 이동
-    if (serviceName === 'Test Plan') {
-      console.log('🧪 Test mode: Skipping API call, going directly to checkout');
-      const testUrl = 'http://localhost:3000/payment/checkout?session_id=test_session&amount=1&service=Test%20Plan&type=PLAN';
-      console.log('🧪 Test URL:', testUrl);
-      
-      setTimeout(() => {
-        console.log('🚀 Redirecting to test checkout page...');
-        window.location.href = testUrl;
-      }, 1000);
-      return;
-    }
-    
-    console.log('🔄 Services: Starting payment API call...');
     setProcessing(serviceName);
     
     try {
@@ -126,25 +41,16 @@ export default function Services() {
         }),
       });
 
-      console.log('📡 Services: Payment API response status:', response.status);
       const data = await response.json();
-      console.log('📊 Services: Payment API response data:', data);
       
       if (data.success) {
-        console.log('✅ Services: Payment session created, URL:', data.url);
-        console.log('🔗 Services: About to redirect...');
-        
-        // 더 안전한 리다이렉트 방법 시도
+        // Redirect to payment session
         try {
-          console.log('🚀 Services: Attempting window.open...');
           window.open(data.url, '_self');
-          console.log('✅ Services: window.open completed');
         } catch (error) {
-          console.log('❌ Services: window.open failed, trying location.href:', error);
           window.location.href = data.url;
         }
       } else {
-        console.error('❌ Services: Payment session error:', data);
         if (response.status === 401) {
           alert('Session expired. Please login again.');
           router.push('/login');
@@ -153,7 +59,6 @@ export default function Services() {
         }
       }
     } catch (error) {
-      console.error('💥 Services: Payment error:', error);
       alert('An error occurred. Please try again.');
     } finally {
       setProcessing(null);
@@ -252,55 +157,6 @@ export default function Services() {
 
       <main className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
 
-        {/* Debug Panel - Remove after fixing */}
-        <div className="mb-8 p-4 bg-yellow-100 rounded-lg border">
-          <h3 className="font-bold text-yellow-800 mb-2">🔍 Authentication Status</h3>
-          <div className="mb-4 p-3 bg-white rounded border">
-            <p className="text-sm font-medium mb-1">
-              Status: {loading ? '⏳ Loading...' : user ? '✅ Logged In' : '❌ Not Logged In'}
-            </p>
-            {user && (
-              <p className="text-sm text-green-700">
-                👤 User: {user.email} ({user.role})
-              </p>
-            )}
-            <p className="text-sm text-gray-600">
-              🍪 Cookies: {typeof document !== 'undefined' && document.cookie ? 'Present' : 'None'}
-            </p>
-          </div>
-          <button 
-            onClick={testAuth}
-            className="bg-yellow-600 text-white px-4 py-2 rounded text-sm mr-2"
-          >
-            🧪 Test Auth API
-          </button>
-          <button 
-            onClick={() => {
-              console.clear();
-              console.log('🧹 Console cleared - only our app logs will show now');
-            }}
-            className="bg-purple-600 text-white px-4 py-2 rounded text-sm mr-2"
-          >
-            🧹 Clear Console
-          </button>
-          <button 
-            type="button"
-            onClick={(e) => {
-              console.log('🚨 BUTTON CLICK EVENT TRIGGERED!');
-              console.log('🚨 Event object:', e);
-              console.log('🚨 Event target:', e.target);
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('🧪 Test Payment button clicked - preventing default');
-              console.log('🧪 About to call handlePayment...');
-              handlePayment('PLAN', 'Test Plan', 1, { test: true });
-              console.log('🧪 handlePayment call completed');
-            }}
-            className="bg-green-600 text-white px-4 py-2 rounded text-sm"
-          >
-            🧪 Test Payment
-          </button>
-        </div>
 
         {/* Pricing Plans */}
         <div className="mb-20">
