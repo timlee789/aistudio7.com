@@ -12,7 +12,9 @@ export default function Services() {
   // Debug user state when component loads or updates
   useEffect(() => {
     console.log('Services page: Component update - User:', user, 'Loading:', loading);
-    console.log('Services page: All cookies:', document.cookie);
+    if (typeof document !== 'undefined') {
+      console.log('Services page: All cookies:', document.cookie);
+    }
   }, [user, loading]);
 
   // Test function to manually check authentication
@@ -20,7 +22,7 @@ export default function Services() {
     console.log('🧪 === Manual Auth Test ===');
     console.log('👤 Current user state:', user);
     console.log('⏳ Loading state:', loading);
-    console.log('🍪 Document cookies:', document.cookie);
+    console.log('🍪 Document cookies:', typeof document !== 'undefined' ? document.cookie : 'N/A (SSR)');
     
     try {
       console.log('🔍 Testing Profile API...');
@@ -263,7 +265,7 @@ export default function Services() {
               </p>
             )}
             <p className="text-sm text-gray-600">
-              🍪 Cookies: {document.cookie ? 'Present' : 'None'}
+              🍪 Cookies: {typeof document !== 'undefined' && document.cookie ? 'Present' : 'None'}
             </p>
           </div>
           <button 
