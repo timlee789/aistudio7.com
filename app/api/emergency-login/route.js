@@ -50,10 +50,10 @@ export async function POST(request) {
     await client.connect();
     console.log('✅ Emergency Login: Database connected!');
 
-    // Find user with raw SQL
+    // Find user with raw SQL (correct table name: users)
     console.log('🔍 Emergency Login: Finding user with raw SQL...');
     const userResult = await client.query(
-      'SELECT id, email, name, password, role FROM "User" WHERE email = $1',
+      'SELECT id, email, name, password, role FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
     const user = userResult.rows[0];
