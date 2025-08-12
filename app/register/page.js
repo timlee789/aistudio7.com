@@ -154,7 +154,27 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#f4d03f' }}>
+    <>
+      <style jsx>{`
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px white inset !important;
+          -webkit-text-fill-color: #111827 !important;
+          background-color: white !important;
+        }
+        
+        input {
+          background-color: white !important;
+          color: #111827 !important;
+        }
+        
+        input::placeholder {
+          color: #9CA3AF !important;
+        }
+      `}</style>
+      <div className="min-h-screen" style={{ background: '#f4d03f' }}>
       {/* Navigation Bar */}
       <nav className="shadow-lg" style={{ background: '#f4d03f' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -384,6 +404,7 @@ export default function Register() {
                 type="text"
                 required
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                style={{ backgroundColor: 'white', color: '#111827' }}
                 placeholder="Enter your name"
                 value={formData.name}
                 onChange={handleChange}
@@ -401,6 +422,7 @@ export default function Register() {
                 type="email"
                 required
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                style={{ backgroundColor: 'white', color: '#111827' }}
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
@@ -417,6 +439,7 @@ export default function Register() {
                 name="company"
                 type="text"
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                style={{ backgroundColor: 'white', color: '#111827' }}
                 placeholder="Enter company name (optional)"
                 value={formData.company}
                 onChange={handleChange}
@@ -433,6 +456,7 @@ export default function Register() {
                 type="tel"
                 required
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                style={{ backgroundColor: 'white', color: '#111827' }}
                 placeholder="Enter your phone number"
                 value={formData.phone}
                 onChange={handleChange}
@@ -450,6 +474,7 @@ export default function Register() {
                 type="password"
                 required
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                style={{ backgroundColor: 'white', color: '#111827' }}
                 placeholder="Enter password (minimum 8 characters)"
                 value={formData.password}
                 onChange={handleChange}
@@ -467,6 +492,7 @@ export default function Register() {
                 type="password"
                 required
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                style={{ backgroundColor: 'white', color: '#111827' }}
                 placeholder="Re-enter your password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
@@ -531,6 +557,7 @@ export default function Register() {
         </form>
       </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
