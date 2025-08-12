@@ -1,97 +1,64 @@
 import { NextResponse } from 'next/server';
-import bcryptjs from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
 
-    // Validation check
+    // 간단한 유효성 검사
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Please enter email and password' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
-    
-    // Find user including SNS settings
+
+    // 사용자 찾기
     const user = await prisma.user.findUnique({
-      where: { 
-        email: email.toLowerCase() 
-      },
-      include: {
-        snsSettings: true
-      }
+      where: { email: email.toLowerCase() }
     });
 
-
     if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Password verification
-    const isPasswordValid = await bcryptjs.compare(password, user.password);
-    
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      );
+    // 비밀번호 확인
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Generate JWT token
+    // JWT 토큰 생성
     const token = jwt.sign(
-      { 
-        userId: user.id,
-        email: user.email,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // Exclude password from response
-    const userResponse = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      company: user.company,
-      phone: user.phone,
-      role: user.role,
-      snsSettings: user.snsSettings
-    };
+    // 응답 생성
+    const response = NextResponse.json({
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
 
-    const response = NextResponse.json(
-      { message: 'Login successful', user: userResponse },
-      { status: 200 }
-    );
-
-    // Set token as HTTP-only cookie
+    // 쿠키 설정
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 // 7 days
+      maxAge: 7 * 24 * 60 * 60 // 7일
     });
 
     return response;
 
   } catch (error) {
-    console.error('Login API error:', error);
-    
-    return NextResponse.json(
-      { 
-        error: 'Server error occurred', 
-        details: error.message,
-        errorName: error.name,
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    );
+    console.error('Login error:', error);
+    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
   }
 }
