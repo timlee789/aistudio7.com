@@ -1,78 +1,62 @@
 import { NextResponse } from 'next/server';
-
-// Check if pg module is available
-let Client;
-try {
-  const pg = require('pg');
-  Client = pg.Client;
-  console.log('✅ pg module loaded successfully');
-} catch (error) {
-  console.error('❌ Failed to load pg module:', error);
-}
+import { PrismaClient } from '@prisma/client';
 
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123!@#@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
 export async function GET() {
   const uniqueId = Date.now() + Math.random().toString(36);
-  console.log('🚨 Emergency Test: Starting RAW SQL database test...', uniqueId);
-  
-  let client = null;
+  console.log('🚨 Emergency Test: Starting Prisma database test...', uniqueId);
   
   try {
-    // Check if Client is available
-    if (!Client) {
-      console.error('❌ pg Client not available');
-      return NextResponse.json({ 
-        success: false,
-        error: 'PostgreSQL client not available', 
-        details: 'pg module failed to load',
-        timestamp: new Date().toISOString(),
-        uniqueId
-      }, { status: 500 });
-    }
-
-    // Use raw PostgreSQL client to bypass Prisma prepared statement issues
-    console.log('🔗 Emergency Test: Creating PostgreSQL client...');
-    client = new Client({
-      connectionString: EMERGENCY_DB_URL,
-      ssl: { rejectUnauthorized: false }
+    // Use Prisma with completely isolated instance
+    console.log('🔗 Emergency Test: Creating isolated Prisma client...');
+    const isolatedPrisma = new PrismaClient({
+      datasources: {
+        db: { url: EMERGENCY_DB_URL }
+      },
+      log: ['error']
     });
 
     console.log('🔗 Emergency Test: Connecting...');
-    await client.connect();
+    await isolatedPrisma.$connect();
     console.log('✅ Emergency Test: Connected!');
 
-    // Test user count with raw SQL
-    console.log('📊 Emergency Test: Counting users with raw SQL...');
-    const userCountResult = await client.query('SELECT COUNT(*) as count FROM "User"');
-    const userCount = parseInt(userCountResult.rows[0].count);
+    // Test with simple raw query first
+    console.log('📊 Emergency Test: Testing simple raw query...');
+    const result = await isolatedPrisma.$queryRaw`SELECT 1 as test`;
+    console.log('✅ Emergency Test: Raw query successful:', result);
+
+    // Test user count
+    console.log('📊 Emergency Test: Counting users...');
+    const userCount = await isolatedPrisma.user.count();
     console.log('👥 Emergency Test: User count:', userCount);
 
-    // Test admin user with raw SQL
-    console.log('🔍 Emergency Test: Finding admin user with raw SQL...');
-    const adminResult = await client.query('SELECT id, email, role FROM "User" WHERE email = $1', ['admin@aistudio7.com']);
-    const adminUser = adminResult.rows[0];
+    // Test admin user
+    console.log('🔍 Emergency Test: Finding admin user...');
+    const adminUser = await isolatedPrisma.user.findFirst({
+      where: { email: 'admin@aistudio7.com' }
+    });
     console.log('🔑 Emergency Test: Admin exists:', !!adminUser);
 
     const response = NextResponse.json({
       success: true,
-      message: 'Emergency RAW SQL database test successful',
+      message: 'Emergency Prisma database test successful',
       results: {
         userCount,
         adminExists: !!adminUser,
         adminRole: adminUser?.role,
         adminEmail: adminUser?.email,
-        method: 'RAW_SQL',
+        method: 'PRISMA_ISOLATED',
         databaseUrl: EMERGENCY_DB_URL.substring(0, 30) + '...',
         timestamp: new Date().toISOString(),
         uniqueId
       }
     });
 
-    // Always disconnect PostgreSQL client
+    // Always disconnect Prisma client
     try {
-      console.log('🔌 Emergency Test: Disconnecting PostgreSQL client...');
-      await client.end();
+      console.log('🔌 Emergency Test: Disconnecting Prisma client...');
+      await isolatedPrisma.$disconnect();
       console.log('✅ Emergency Test: Disconnected cleanly');
     } catch (disconnectError) {
       console.log('⚠️ Emergency Test: Disconnect error (ignored):', disconnectError.message);
@@ -82,20 +66,13 @@ export async function GET() {
 
   } catch (error) {
     console.error('💥 Emergency Test Error:', error);
-    
-    // Ensure client is disconnected even on error
-    if (client) {
-      try {
-        await client.end();
-      } catch (endError) {
-        console.log('⚠️ Emergency Test: Error disconnecting client:', endError.message);
-      }
-    }
+    console.error('💥 Error stack:', error.stack);
     
     return NextResponse.json({ 
       success: false,
-      error: 'Emergency RAW SQL test failed', 
+      error: 'Emergency Prisma test failed', 
       details: error.message,
+      errorStack: error.stack,
       timestamp: new Date().toISOString(),
       uniqueId
     }, { status: 500 });
