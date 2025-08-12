@@ -112,8 +112,22 @@ export async function POST(request) {
     console.error('💥 Login API: Error message:', error.message);
     console.error('💥 Login API: Error stack:', error.stack);
     
+    // Additional debugging information
+    console.error('💥 Login API: Environment info:', {
+      NODE_ENV: process.env.NODE_ENV,
+      HAS_DATABASE_URL: !!process.env.DATABASE_URL,
+      HAS_JWT_SECRET: !!process.env.JWT_SECRET,
+      DATABASE_URL_LENGTH: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0,
+      JWT_SECRET_LENGTH: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0
+    });
+    
     return NextResponse.json(
-      { error: 'Server error occurred', details: error.message },
+      { 
+        error: 'Server error occurred', 
+        details: error.message,
+        errorName: error.name,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
