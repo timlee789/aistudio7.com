@@ -1,17 +1,22 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 
-// Direct database connection to bypass environment variable issues
-const WORKING_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
-const directPrisma = new PrismaClient({
-  datasources: {
-    db: { url: WORKING_DB_URL }
-  }
-});
+// Use raw PostgreSQL client to avoid Prisma prepared statement issues
+let Client;
+try {
+  const pg = require('pg');
+  Client = pg.Client;
+  console.log('✅ pg module loaded successfully for login');
+} catch (error) {
+  console.error('❌ Failed to load pg module for login:', error);
+}
+
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
 export async function POST(request) {
+  let client = null;
+  
   try {
     console.log('🔐 Login API: Starting login process...');
     
@@ -27,15 +32,51 @@ export async function POST(request) {
       );
     }
 
+    // Check if Client is available
+    if (!Client) {
+      console.error('❌ pg Client not available for login');
+      return NextResponse.json({ 
+        error: 'Database client not available', 
+        details: 'pg module failed to load'
+      }, { status: 500 });
+    }
+
+    console.log('🔍 Login API: Connecting to database...');
+    client = new Client({
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
+    
+    await client.connect();
+    console.log('✅ Login API: Database connected!');
+    
     console.log('🔍 Login API: Searching for user in database...');
     
-    // Find user (including SNS settings)
-    const user = await directPrisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      include: {
-        snsSettings: true
-      }
-    });
+    // Find user with raw SQL including SNS settings
+    const userResult = await client.query(`
+      SELECT 
+        u.id, u.name, u.email, u.password, u.company, u.phone, u.role,
+        s.id as sns_id, s.platforms, s.settings as sns_settings
+      FROM users u
+      LEFT JOIN sns_settings s ON u.id = s."userId"
+      WHERE u.email = $1
+    `, [email.toLowerCase()]);
+    
+    const userData = userResult.rows[0];
+    const user = userData ? {
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      password: userData.password,
+      company: userData.company,
+      phone: userData.phone,
+      role: userData.role,
+      snsSettings: userData.sns_id ? {
+        id: userData.sns_id,
+        platforms: userData.platforms,
+        settings: userData.sns_settings
+      } : null
+    } : null;
 
     console.log('👤 Login API: User found:', user ? `${user.email} (${user.role})` : 'No user found');
 
@@ -112,6 +153,15 @@ export async function POST(request) {
       tokenLength: token.length
     });
 
+    // Always disconnect PostgreSQL client
+    try {
+      console.log('🔌 Login API: Disconnecting PostgreSQL client...');
+      await client.end();
+      console.log('✅ Login API: Disconnected cleanly');
+    } catch (disconnectError) {
+      console.log('⚠️ Login API: Disconnect error (ignored):', disconnectError.message);
+    }
+
     return response;
 
   } catch (error) {
@@ -120,14 +170,14 @@ export async function POST(request) {
     console.error('💥 Login API: Error message:', error.message);
     console.error('💥 Login API: Error stack:', error.stack);
     
-    // Additional debugging information
-    console.error('💥 Login API: Environment info:', {
-      NODE_ENV: process.env.NODE_ENV,
-      HAS_DATABASE_URL: !!process.env.DATABASE_URL,
-      HAS_JWT_SECRET: !!process.env.JWT_SECRET,
-      DATABASE_URL_LENGTH: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0,
-      JWT_SECRET_LENGTH: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0
-    });
+    // Ensure client is disconnected even on error
+    if (client) {
+      try {
+        await client.end();
+      } catch (endError) {
+        console.log('⚠️ Login API: Error disconnecting client:', endError.message);
+      }
+    }
     
     return NextResponse.json(
       { 
