@@ -4,17 +4,18 @@ import { PrismaClient } from '@prisma/client';
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
 export async function GET() {
-  let freshPrisma = null;
+  // Create unique Prisma client with timestamp to force new instance
+  const uniqueId = Date.now() + Math.random().toString(36);
+  console.log('🚨 Emergency Test: Starting database test...', uniqueId);
   
   try {
-    console.log('🚨 Emergency Test: Starting database test...');
-    
-    // Create completely fresh Prisma client each time
+    // Create completely fresh Prisma client with unique configuration
     console.log('🔗 Emergency Test: Creating fresh Prisma client...');
-    freshPrisma = new PrismaClient({
+    const freshPrisma = new PrismaClient({
       datasources: {
         db: { url: EMERGENCY_DB_URL }
-      }
+      },
+      log: ['error']
     });
 
     console.log('🔗 Emergency Test: Connecting...');
@@ -33,7 +34,7 @@ export async function GET() {
     });
     console.log('🔑 Emergency Test: Admin exists:', !!adminUser);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Emergency database test successful',
       results: {
@@ -41,9 +42,21 @@ export async function GET() {
         adminExists: !!adminUser,
         adminRole: adminUser?.role,
         databaseUrl: EMERGENCY_DB_URL.substring(0, 30) + '...',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        uniqueId
       }
     });
+
+    // Always disconnect fresh connection immediately
+    try {
+      console.log('🔌 Emergency Test: Disconnecting...');
+      await freshPrisma.$disconnect();
+      console.log('✅ Emergency Test: Disconnected cleanly');
+    } catch (disconnectError) {
+      console.log('⚠️ Emergency Test: Disconnect error (ignored):', disconnectError.message);
+    }
+
+    return response;
 
   } catch (error) {
     console.error('💥 Emergency Test Error:', error);
@@ -51,18 +64,8 @@ export async function GET() {
       success: false,
       error: 'Emergency test failed', 
       details: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      uniqueId
     }, { status: 500 });
-  } finally {
-    // Always disconnect fresh connection
-    if (freshPrisma) {
-      try {
-        console.log('🔌 Emergency Test: Disconnecting...');
-        await freshPrisma.$disconnect();
-        console.log('✅ Emergency Test: Disconnected cleanly');
-      } catch (disconnectError) {
-        console.log('⚠️ Emergency Test: Disconnect error (ignored):', disconnectError.message);
-      }
-    }
   }
 }

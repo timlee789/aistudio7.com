@@ -8,11 +8,11 @@ const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%2
 const EMERGENCY_JWT_SECRET = "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
 
 export async function POST(request) {
-  let freshLoginPrisma = null;
+  // Create unique instance identifier
+  const uniqueId = Date.now() + Math.random().toString(36);
+  console.log('🚨 Emergency Login: Starting...', uniqueId);
   
   try {
-    console.log('🚨 Emergency Login: Starting...');
-    
     const { email, password } = await request.json();
     console.log('📧 Emergency Login: Email received:', email);
 
@@ -20,12 +20,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    // Create fresh Prisma client each time
+    // Create fresh Prisma client each time with unique config
     console.log('🔍 Emergency Login: Creating fresh Prisma client...');
-    freshLoginPrisma = new PrismaClient({
+    const freshLoginPrisma = new PrismaClient({
       datasources: {
         db: { url: EMERGENCY_DB_URL }
-      }
+      },
+      log: ['error']
     });
     
     await freshLoginPrisma.$connect();
@@ -83,24 +84,23 @@ export async function POST(request) {
       maxAge: 7 * 24 * 60 * 60
     });
 
+    // Always disconnect fresh connection immediately before returning
+    try {
+      console.log('🔌 Emergency Login: Disconnecting...');
+      await freshLoginPrisma.$disconnect();
+      console.log('✅ Emergency Login: Disconnected cleanly');
+    } catch (disconnectError) {
+      console.log('⚠️ Emergency Login: Disconnect error (ignored):', disconnectError.message);
+    }
+
     return response;
 
   } catch (error) {
     console.error('💥 Emergency Login Error:', error);
     return NextResponse.json({ 
       error: 'Emergency login failed', 
-      details: error.message 
+      details: error.message,
+      uniqueId
     }, { status: 500 });
-  } finally {
-    // Always disconnect to avoid prepared statement conflicts
-    if (freshLoginPrisma) {
-      try {
-        console.log('🔌 Emergency Login: Disconnecting...');
-        await freshLoginPrisma.$disconnect();
-        console.log('✅ Emergency Login: Disconnected cleanly');
-      } catch (disconnectError) {
-        console.log('⚠️ Emergency Login: Disconnect error (ignored):', disconnectError.message);
-      }
-    }
   }
 }
