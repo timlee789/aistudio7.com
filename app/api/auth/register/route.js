@@ -5,12 +5,16 @@ import { randomUUID } from 'crypto';
 
 // Hardcoded DATABASE_URL to bypass Vercel env var issues
 const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+const JWT_SECRET = process.env.JWT_SECRET || "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
 
 export async function POST(request) {
   let prisma = null;
   
   try {
     console.log('🔐 Register API: Starting registration process...');
+    console.log('🔍 Register API: Environment check - DATABASE_URL set:', !!process.env.DATABASE_URL);
+    console.log('🔍 Register API: Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);
+    console.log('🔍 Register API: Environment check - NODE_ENV:', process.env.NODE_ENV);
     
     const { name, email, password, company, phone } = await request.json();
     console.log('📨 Register API: Registration data received for:', email);
@@ -61,8 +65,10 @@ export async function POST(request) {
     console.log('👤 Register API: Creating new user...');
     
     // Generate unique ID - use crypto UUID for better compatibility
+    console.log('🔍 Register API: Testing crypto module...');
     const userId = randomUUID().replace(/-/g, '');
     console.log('🆔 Register API: Generated user ID:', userId);
+    console.log('✅ Register API: Crypto module working correctly');
     
     // Create new user with raw query
     const newUserResult = await prisma.$queryRaw`
