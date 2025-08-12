@@ -10,15 +10,31 @@ export async function GET() {
   try {
     await client.connect();
     
-    // 직접 SQL 쿼리로 사용자 수 확인
-    const result = await client.query('SELECT COUNT(*) as count FROM "User"');
-    const userCount = parseInt(result.rows[0].count);
+    // 먼저 테이블 목록 확인
+    const tablesResult = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+    
+    // 사용자 테이블 찾기 (대소문자 구분 없이)
+    const tables = tablesResult.rows.map(row => row.table_name);
+    const userTable = tables.find(name => name.toLowerCase().includes('user'));
+    
+    let userCount = 0;
+    if (userTable) {
+      const result = await client.query(`SELECT COUNT(*) as count FROM "${userTable}"`);
+      userCount = parseInt(result.rows[0].count);
+    }
     
     await client.end();
     
     return NextResponse.json({
       status: 'OK',
       message: 'Direct PostgreSQL connection successful',
+      tables,
+      userTable,
       userCount,
       timestamp: new Date().toISOString()
     });
