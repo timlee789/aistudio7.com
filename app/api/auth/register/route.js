@@ -3,8 +3,7 @@ import bcryptjs from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
-// Hardcoded DATABASE_URL to bypass Vercel env var issues
-const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+// Use standard Prisma configuration with environment variables
 const JWT_SECRET = process.env.JWT_SECRET || "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
 
 export async function POST(request) {
@@ -32,9 +31,6 @@ export async function POST(request) {
     
     // Create fresh Prisma client for each request to avoid prepared statement issues
     prisma = new PrismaClient({
-      datasources: {
-        db: { url: WORKING_DATABASE_URL }
-      },
       log: ['error']
     });
     

@@ -5,8 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
-// Hardcoded DATABASE_URL to bypass Vercel env var issues
-const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+// Use standard Prisma configuration with environment variables
 const JWT_SECRET = process.env.JWT_SECRET || "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -51,9 +50,6 @@ export async function POST(request) {
     // Create fresh Prisma client
     console.log('🔍 Google OAuth API: Creating fresh Prisma client...');
     prisma = new PrismaClient({
-      datasources: {
-        db: { url: WORKING_DATABASE_URL }
-      },
       log: ['error']
     });
     

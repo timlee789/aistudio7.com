@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-// Direct hardcoded URL - bypass all environment variables
-const DIRECT_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+// Use standard Prisma configuration with environment variables
 
 let prisma;
 
@@ -30,14 +29,8 @@ export async function GET() {
       }, { status: 500 });
     }
     
-    // Create fresh Prisma client with direct URL
-    prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: DIRECT_DATABASE_URL
-        }
-      }
-    });
+    // Create fresh Prisma client with environment variables
+    prisma = new PrismaClient();
     
     console.log('🔍 DB Test: Prisma client created, testing connection...');
     

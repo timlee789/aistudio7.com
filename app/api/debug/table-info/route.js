@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-// Hardcoded DATABASE_URL to bypass Vercel env var issues
-const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+// Use standard Prisma configuration with environment variables
 
 export async function GET() {
   let prisma = null;
@@ -12,9 +11,6 @@ export async function GET() {
     
     // Create fresh Prisma client
     prisma = new PrismaClient({
-      datasources: {
-        db: { url: WORKING_DATABASE_URL }
-      },
       log: ['error']
     });
     
