@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Admin Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4d03f;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #3730a3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .test-btn {
+            background: #059669;
+        }
+        .test-btn:hover {
+            background: #047857;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 Emergency Admin Login</h1>
+        
+        <button onclick="testDatabase()" class="test-btn" id="testBtn">
+            Test Database Connection
+        </button>
+        
+        <form onsubmit="emergencyLogin(event)">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="admin@aistudio7.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" value="admin123!" required>
+            </div>
+            <button type="submit" id="loginBtn">Emergency Login</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testDatabase() {
+            const testBtn = document.getElementById('testBtn');
+            const result = document.getElementById('result');
+            
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/emergency-test');
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.className = 'result success';
+                    result.textContent = `✅ Database Test Successful!
+User Count: ${data.results.userCount}
+Admin Exists: ${data.results.adminExists}
+Admin Role: ${data.results.adminRole}
+Timestamp: ${data.results.timestamp}`;
+                } else {
+                    result.className = 'result error';
+                    result.textContent = `❌ Database Test Failed:
+${data.error}
+Details: ${data.details}`;
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = `❌ Network Error: ${error.message}`;
+            }
+            
+            testBtn.disabled = false;
+            testBtn.textContent = 'Test Database Connection';
+        }
+
+        async function emergencyLogin(event) {
+            event.preventDefault();
+            
+            const loginBtn = document.getElementById('loginBtn');
+            const result = document.getElementById('result');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
+            try {
+                const response = await fetch('/api/emergency-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.className = 'result success';
+                    result.textContent = `🎉 Emergency Login Successful!
+User: ${data.user.name}
+Email: ${data.user.email}
+Role: ${data.user.role}
+
+Redirecting to admin panel...`;
+                    
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 2000);
+                } else {
+                    result.className = 'result error';
+                    result.textContent = `❌ Emergency Login Failed:
+${data.error}
+Details: ${data.details || 'No additional details'}`;
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = `❌ Network Error: ${error.message}`;
+            }
+            
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Emergency Login';
+        }
+    </script>
+</body>
+</html>
