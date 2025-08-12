@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123!@#@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
 export async function GET() {
   const uniqueId = Date.now() + Math.random().toString(36);
