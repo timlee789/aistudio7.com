@@ -25,9 +25,6 @@ export async function POST(request) {
     freshLoginPrisma = new PrismaClient({
       datasources: {
         db: { url: EMERGENCY_DB_URL }
-      },
-      __internal: {
-        useUds: false
       }
     });
     

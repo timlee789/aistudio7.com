@@ -14,10 +14,6 @@ export async function GET() {
     freshPrisma = new PrismaClient({
       datasources: {
         db: { url: EMERGENCY_DB_URL }
-      },
-      // Force new connection each time
-      __internal: {
-        useUds: false
       }
     });
 
