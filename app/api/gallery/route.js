@@ -79,8 +79,8 @@ export async function POST(request) {
       );
     }
 
-    // File upload processing with Supabase Storage
-    const uploadResult = await uploadFile(file, 'uploads', 'gallery');
+    // File upload processing with Supabase Storage using admin privileges
+    const uploadResult = await uploadFile(file, 'uploads', 'gallery', true);
     
     if (!uploadResult.success) {
       return NextResponse.json(
