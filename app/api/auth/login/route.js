@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma';
+import { Client } from 'pg';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 
 export async function POST(request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     const { email, password } = await request.json();
 
@@ -14,20 +19,29 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    // 사용자 찾기
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() }
-    });
+    await client.connect();
 
-    if (!user) {
+    // 사용자 찾기 (직접 SQL)
+    const userResult = await client.query(
+      'SELECT id, name, email, password, role FROM users WHERE LOWER(email) = LOWER($1)',
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      await client.end();
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
+
+    const user = userResult.rows[0];
 
     // 비밀번호 확인
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
+      await client.end();
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
+
+    await client.end();
 
     // JWT 토큰 생성
     const token = jwt.sign(
@@ -59,6 +73,13 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Login error:', error);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json({ error: 'Login failed' }, { status: 500 });
   }
 }
