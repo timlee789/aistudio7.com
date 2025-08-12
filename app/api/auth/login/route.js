@@ -1,21 +1,10 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-
-// Use raw PostgreSQL client to avoid Prisma prepared statement issues
-let Client;
-try {
-  const pg = require('pg');
-  Client = pg.Client;
-  console.log('✅ pg module loaded successfully for login');
-} catch (error) {
-  console.error('❌ Failed to load pg module for login:', error);
-}
-
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+import { PrismaClient } from '@prisma/client';
 
 export async function POST(request) {
-  let client = null;
+  let prisma = null;
   
   try {
     console.log('🔐 Login API: Starting login process...');
@@ -32,37 +21,30 @@ export async function POST(request) {
       );
     }
 
-    // Check if Client is available
-    if (!Client) {
-      console.error('❌ pg Client not available for login');
-      return NextResponse.json({ 
-        error: 'Database client not available', 
-        details: 'pg module failed to load'
-      }, { status: 500 });
-    }
-
-    console.log('🔍 Login API: Connecting to database...');
-    client = new Client({
-      connectionString: DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+    console.log('🔍 Login API: Creating fresh Prisma client...');
+    
+    // Create fresh Prisma client for each request to avoid prepared statement issues
+    prisma = new PrismaClient({
+      log: ['error']
     });
     
-    await client.connect();
+    await prisma.$connect();
     console.log('✅ Login API: Database connected!');
     
     console.log('🔍 Login API: Searching for user in database...');
     
-    // Find user with raw SQL including SNS settings
-    const userResult = await client.query(`
+    // Find user including SNS settings with raw query to avoid prepared statement caching
+    const users = await prisma.$queryRaw`
       SELECT 
         u.id, u.name, u.email, u.password, u.company, u.phone, u.role,
         s.id as sns_id, s.platforms, s.settings as sns_settings
       FROM users u
       LEFT JOIN sns_settings s ON u.id = s."userId"
-      WHERE u.email = $1
-    `, [email.toLowerCase()]);
+      WHERE u.email = ${email.toLowerCase()}
+      LIMIT 1
+    `;
     
-    const userData = userResult.rows[0];
+    const userData = users[0];
     const user = userData ? {
       id: userData.id,
       name: userData.name,
@@ -153,10 +135,10 @@ export async function POST(request) {
       tokenLength: token.length
     });
 
-    // Always disconnect PostgreSQL client
+    // Always disconnect Prisma client
     try {
-      console.log('🔌 Login API: Disconnecting PostgreSQL client...');
-      await client.end();
+      console.log('🔌 Login API: Disconnecting Prisma client...');
+      await prisma.$disconnect();
       console.log('✅ Login API: Disconnected cleanly');
     } catch (disconnectError) {
       console.log('⚠️ Login API: Disconnect error (ignored):', disconnectError.message);
@@ -170,12 +152,12 @@ export async function POST(request) {
     console.error('💥 Login API: Error message:', error.message);
     console.error('💥 Login API: Error stack:', error.stack);
     
-    // Ensure client is disconnected even on error
-    if (client) {
+    // Ensure Prisma client is disconnected even on error
+    if (prisma) {
       try {
-        await client.end();
+        await prisma.$disconnect();
       } catch (endError) {
-        console.log('⚠️ Login API: Error disconnecting client:', endError.message);
+        console.log('⚠️ Login API: Error disconnecting Prisma:', endError.message);
       }
     }
     
