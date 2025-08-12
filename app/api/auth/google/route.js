@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-new';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 

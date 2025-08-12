@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-new';
 
 export async function POST(request) {
   try {

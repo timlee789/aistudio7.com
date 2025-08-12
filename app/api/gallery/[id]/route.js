@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-new';
 import jwt from 'jsonwebtoken';
 import { unlink } from 'fs/promises';
 import path from 'path';

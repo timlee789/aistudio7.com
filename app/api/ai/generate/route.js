@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-new';
 import ComfyUIService from '@/lib/comfyui';
 
 export async function POST(request) {

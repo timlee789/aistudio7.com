@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-new';
 
 // Mock Stripe integration - In production, you would use actual Stripe
 const mockStripe = {

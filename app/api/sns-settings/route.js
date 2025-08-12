@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-new';
 import jwt from 'jsonwebtoken';
 
 // 토큰에서 사용자 정보 추출
