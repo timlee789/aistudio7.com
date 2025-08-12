@@ -1,7 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
-const prisma = new PrismaClient();
+// Global Prisma client for better performance
+const prisma = new PrismaClient({
+  log: ['error']
+});
 
 async function createAdmin() {
   try {

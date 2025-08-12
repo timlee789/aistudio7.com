@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 
 // Use standard Prisma configuration with environment variables
@@ -21,8 +21,6 @@ function getUserFromToken(request) {
 
 // Get user profile (GET)
 export async function GET(request) {
-  let prisma = null;
-  
   try {
     const user = getUserFromToken(request);
     if (!user) {
@@ -31,13 +29,6 @@ export async function GET(request) {
         { status: 401 }
       );
     }
-
-    // Create fresh Prisma client
-    prisma = new PrismaClient({
-      log: ['error']
-    });
-    
-    await prisma.$connect();
 
     const userProfile = await prisma.user.findUnique({
       where: { id: user.userId },
@@ -61,38 +52,24 @@ export async function GET(request) {
       );
     }
 
-    // Disconnect before returning
-    try {
-      await prisma.$disconnect();
-    } catch (disconnectError) {
-      // Ignore disconnect errors
-    }
-
-    return NextResponse.json({ user: userProfile }, { status: 200 });
+    return NextResponse.json({ user: userProfile });
 
   } catch (error) {
-    console.error('Profile fetch error:', error);
-    
-    // Ensure disconnect on error
-    if (prisma) {
-      try {
-        await prisma.$disconnect();
-      } catch (disconnectError) {
-        // Ignore disconnect errors
-      }
-    }
+    console.error('Profile API GET error:', error);
     
     return NextResponse.json(
-      { error: 'Server error occurred' },
+      { 
+        error: 'Server error occurred', 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
 }
 
-// Update SNS settings (PUT)
-export async function PUT(request) {
-  let prisma = null;
-  
+// Update SNS settings (POST)
+export async function POST(request) {
   try {
     const user = getUserFromToken(request);
     if (!user) {
@@ -104,71 +81,41 @@ export async function PUT(request) {
 
     const { snsSettings } = await request.json();
 
-    // Create fresh Prisma client
-    prisma = new PrismaClient({
-      log: ['error']
-    });
-    
-    await prisma.$connect();
-
     // Upsert SNS settings (create if not exists, update if exists)
     const updatedSnsSettings = await prisma.snsSettings.upsert({
       where: {
         userId: user.userId
       },
       update: {
-        platforms: snsSettings.platforms || [],
-        settings: snsSettings.settings || {}
+        platforms: JSON.stringify(snsSettings.platforms || []),
+        settings: JSON.stringify(snsSettings.settings || {}),
+        updatedAt: new Date()
       },
       create: {
         userId: user.userId,
-        platforms: snsSettings.platforms || [],
-        settings: snsSettings.settings || {}
+        platforms: JSON.stringify(snsSettings.platforms || []),
+        settings: JSON.stringify(snsSettings.settings || {})
       }
     });
 
-    // Fetch updated user information
-    const updatedUser = await prisma.user.findUnique({
-      where: { id: user.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        company: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        snsSettings: true
+    return NextResponse.json({ 
+      message: 'SNS settings updated successfully',
+      snsSettings: {
+        id: updatedSnsSettings.id,
+        platforms: JSON.parse(updatedSnsSettings.platforms),
+        settings: JSON.parse(updatedSnsSettings.settings)
       }
     });
-
-    // Disconnect before returning
-    try {
-      await prisma.$disconnect();
-    } catch (disconnectError) {
-      // Ignore disconnect errors
-    }
-
-    return NextResponse.json(
-      { message: 'SNS settings updated successfully', user: updatedUser },
-      { status: 200 }
-    );
 
   } catch (error) {
-    console.error('SNS settings update error:', error);
-    
-    // Ensure disconnect on error
-    if (prisma) {
-      try {
-        await prisma.$disconnect();
-      } catch (disconnectError) {
-        // Ignore disconnect errors
-      }
-    }
+    console.error('Profile API POST error:', error);
     
     return NextResponse.json(
-      { error: 'Server error occurred' },
+      { 
+        error: 'Server error occurred', 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }

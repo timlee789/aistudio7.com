@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
 
 // Use standard Prisma configuration with environment variables
 const JWT_SECRET = process.env.JWT_SECRET || "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
@@ -11,8 +10,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kK
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export async function POST(request) {
-  let prisma = null;
-  
   try {
     const { token } = await request.json();
 
@@ -39,106 +36,90 @@ export async function POST(request) {
       );
     }
 
-    // Create fresh Prisma client
-    prisma = new PrismaClient({
-      log: ['error']
+    // Check if user already exists
+    let user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: {
+        snsSettings: true
+      }
     });
-    
-    await prisma.$connect();
-    
-    // Check if user already exists with raw query
-    const existingUsers = await prisma.$queryRaw`
-      SELECT id, name, email, password, company, phone, role, "googleId"
-      FROM users 
-      WHERE email = ${email.toLowerCase()} 
-      LIMIT 1
-    `;
 
-    let user;
-    
-    if (existingUsers.length > 0) {
-      user = existingUsers[0];
-      
+    if (user) {
       // User exists, update Google ID if not set
       if (!user.googleId) {
-        const updatedUsers = await prisma.$queryRaw`
-          UPDATE users 
-          SET "googleId" = ${googleId}, "updatedAt" = NOW()
-          WHERE id = ${user.id}
-          RETURNING id, name, email, company, phone, role, "googleId"
-        `;
-        user = updatedUsers[0];
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { 
+            googleId: googleId,
+            updatedAt: new Date()
+          },
+          include: {
+            snsSettings: true
+          }
+        });
       }
     } else {
-      // Generate unique ID - use crypto UUID for better compatibility
-      const userId = randomUUID().replace(/-/g, '');
+      // Create new user with Google OAuth
+      const hashedPassword = await bcrypt.hash(googleId + Date.now(), 10);
       
-      // Create new user
-      const hashedPassword = await bcrypt.hash(`google_${googleId}_${Date.now()}`, 10);
-      
-      const newUsers = await prisma.$queryRaw`
-        INSERT INTO users (id, name, email, password, "googleId", phone, company, role, "createdAt", "updatedAt")
-        VALUES (${userId}, ${name}, ${email.toLowerCase()}, ${hashedPassword}, ${googleId}, '', '', 'CLIENT', NOW(), NOW())
-        RETURNING id, name, email, company, phone, role, "googleId"
-      `;
-      
-      user = newUsers[0];
+      user = await prisma.user.create({
+        data: {
+          name: name || 'Google User',
+          email: email.toLowerCase(),
+          password: hashedPassword,
+          company: '',
+          phone: '',
+          role: 'CLIENT',
+          googleId: googleId
+        },
+        include: {
+          snsSettings: true
+        }
+      });
     }
 
     // Generate JWT token
     const jwtToken = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
-        name: user.name, 
-        role: user.role 
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role
       },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
+    // Create response
     const response = NextResponse.json({
-      success: true,
+      message: 'Google authentication successful',
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        company: user.company,
+        phone: user.phone,
+        role: user.role,
+        snsSettings: user.snsSettings
       }
     });
 
-    // Set HTTP-only cookie
+    // Set JWT token as HTTP-only cookie
     response.cookies.set('token', jwtToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
     });
-
-    // Always disconnect Prisma client
-    try {
-      await prisma.$disconnect();
-    } catch (disconnectError) {
-      console.error('Google OAuth API: Disconnect error:', disconnectError.message);
-    }
 
     return response;
 
   } catch (error) {
     console.error('Google OAuth API error:', error);
     
-    // Ensure Prisma client is disconnected even on error
-    if (prisma) {
-      try {
-        await prisma.$disconnect();
-      } catch (endError) {
-        console.error('Google OAuth API: Error disconnecting Prisma:', endError.message);
-      }
-    }
-    
     return NextResponse.json(
       { 
-        error: 'Google authentication failed', 
+        error: 'Server error occurred', 
         details: error.message,
         errorName: error.name,
         timestamp: new Date().toISOString()

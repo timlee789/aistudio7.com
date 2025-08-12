@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request) {
-  let prisma = null;
-  
   try {
     const { email, password } = await request.json();
 
@@ -16,18 +14,6 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
-    // Create fresh Prisma client for each request to avoid prepared statement issues  
-    prisma = new PrismaClient({
-      log: ['error'],
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL + '?pgbouncer=true&connection_limit=1'
-        }
-      }
-    });
-    
-    await prisma.$connect();
     
     // Find user including SNS settings
     const user = await prisma.user.findUnique({
@@ -93,26 +79,10 @@ export async function POST(request) {
       maxAge: 7 * 24 * 60 * 60 // 7 days
     });
 
-    // Always disconnect Prisma client
-    try {
-      await prisma.$disconnect();
-    } catch (disconnectError) {
-      console.error('Login API: Disconnect error:', disconnectError.message);
-    }
-
     return response;
 
   } catch (error) {
     console.error('Login API error:', error);
-    
-    // Ensure Prisma client is disconnected even on error
-    if (prisma) {
-      try {
-        await prisma.$disconnect();
-      } catch (endError) {
-        console.error('Login API: Error disconnecting Prisma:', endError.message);
-      }
-    }
     
     return NextResponse.json(
       { 
