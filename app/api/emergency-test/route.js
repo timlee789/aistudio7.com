@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server';
-import { Client } from 'pg';
+
+// Check if pg module is available
+let Client;
+try {
+  const pg = require('pg');
+  Client = pg.Client;
+  console.log('✅ pg module loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load pg module:', error);
+}
 
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
@@ -10,6 +19,18 @@ export async function GET() {
   let client = null;
   
   try {
+    // Check if Client is available
+    if (!Client) {
+      console.error('❌ pg Client not available');
+      return NextResponse.json({ 
+        success: false,
+        error: 'PostgreSQL client not available', 
+        details: 'pg module failed to load',
+        timestamp: new Date().toISOString(),
+        uniqueId
+      }, { status: 500 });
+    }
+
     // Use raw PostgreSQL client to bypass Prisma prepared statement issues
     console.log('🔗 Emergency Test: Creating PostgreSQL client...');
     client = new Client({

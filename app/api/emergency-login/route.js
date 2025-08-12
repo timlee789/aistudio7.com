@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Client } from 'pg';
+
+// Check if pg module is available
+let Client;
+try {
+  const pg = require('pg');
+  Client = pg.Client;
+  console.log('✅ pg module loaded successfully for login');
+} catch (error) {
+  console.error('❌ Failed to load pg module for login:', error);
+}
 
 // Emergency login endpoint with completely hardcoded values
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
@@ -19,6 +28,16 @@ export async function POST(request) {
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
+    }
+
+    // Check if Client is available
+    if (!Client) {
+      console.error('❌ pg Client not available for login');
+      return NextResponse.json({ 
+        error: 'PostgreSQL client not available for login', 
+        details: 'pg module failed to load',
+        uniqueId
+      }, { status: 500 });
     }
 
     // Use raw PostgreSQL client to bypass Prisma issues
