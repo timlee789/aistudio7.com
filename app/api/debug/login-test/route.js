@@ -2,15 +2,45 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { Client } from 'pg';
 
+export async function GET(request) {
+  // URL 파라미터에서 이메일과 비밀번호 가져오기
+  const { searchParams } = new URL(request.url);
+  const email = searchParams.get('email');
+  const password = searchParams.get('password');
+
+  if (!email || !password) {
+    return NextResponse.json({
+      status: 'ERROR',
+      message: 'Email and password required as query parameters',
+      usage: 'Add ?email=your@email.com&password=yourpassword to the URL',
+      timestamp: new Date().toISOString()
+    }, { status: 400 });
+  }
+
+  return await debugLogin(email, password);
+}
+
 export async function POST(request) {
+  try {
+    const { email, password } = await request.json();
+    return await debugLogin(email, password);
+  } catch (error) {
+    return NextResponse.json({
+      status: 'ERROR',
+      message: 'Invalid JSON in request body',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }, { status: 400 });
+  }
+}
+
+async function debugLogin(email, password) {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
   });
 
   try {
-    const { email, password } = await request.json();
-
     // 로그인 시도 정보
     const debugInfo = {
       receivedEmail: email,
