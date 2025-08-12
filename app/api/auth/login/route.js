@@ -23,8 +23,14 @@ export async function POST(request) {
 
     console.log('🔍 Login API: Creating fresh Prisma client...');
     
+    // Hardcode DATABASE_URL to bypass Vercel environment variable issues
+    const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+    
     // Create fresh Prisma client for each request to avoid prepared statement issues
     prisma = new PrismaClient({
+      datasources: {
+        db: { url: WORKING_DATABASE_URL }
+      },
       log: ['error']
     });
     
