@@ -62,7 +62,7 @@ export async function POST(request) {
     // Create new user with raw query
     const newUserResult = await prisma.$queryRaw`
       INSERT INTO users (name, email, password, company, phone, role, "createdAt", "updatedAt")
-      VALUES (${name}, ${email.toLowerCase()}, ${hashedPassword}, ${company || null}, ${phone}, 'CLIENT', NOW(), NOW())
+      VALUES (${name}, ${email.toLowerCase()}, ${hashedPassword}, ${company || ''}, ${phone}, 'CLIENT', NOW(), NOW())
       RETURNING id, name, email, company, phone, role, "createdAt"
     `;
     
