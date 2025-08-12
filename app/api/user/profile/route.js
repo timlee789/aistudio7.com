@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma-new';
+import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 
 // Extract user information from token
@@ -29,6 +29,8 @@ function getUserFromToken(request) {
 // Get user profile (GET)
 export async function GET(request) {
   console.log('Profile API: GET request received');
+  let prisma = null;
+  
   try {
     const user = getUserFromToken(request);
     if (!user) {
@@ -40,6 +42,18 @@ export async function GET(request) {
     }
 
     console.log('Profile API: User found from token, fetching profile for:', user.userId);
+
+    // Create fresh Prisma client with hardcoded URL
+    const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+    
+    prisma = new PrismaClient({
+      datasources: {
+        db: { url: WORKING_DATABASE_URL }
+      },
+      log: ['error']
+    });
+    
+    await prisma.$connect();
 
     const userProfile = await prisma.user.findUnique({
       where: { id: user.userId },
@@ -63,10 +77,29 @@ export async function GET(request) {
       );
     }
 
-    return NextResponse.json({ user: userProfile }, { status: 200 });
+    const response = NextResponse.json({ user: userProfile }, { status: 200 });
+    
+    // Always disconnect Prisma client
+    try {
+      await prisma.$disconnect();
+    } catch (disconnectError) {
+      console.log('Profile API: Disconnect error (ignored):', disconnectError.message);
+    }
+    
+    return response;
 
   } catch (error) {
     console.error('Profile fetch error:', error);
+    
+    // Ensure Prisma client is disconnected even on error
+    if (prisma) {
+      try {
+        await prisma.$disconnect();
+      } catch (endError) {
+        console.log('Profile API: Error disconnecting Prisma:', endError.message);
+      }
+    }
+    
     return NextResponse.json(
       { error: 'Server error occurred' },
       { status: 500 }
@@ -76,6 +109,8 @@ export async function GET(request) {
 
 // Update SNS settings (PUT)
 export async function PUT(request) {
+  let prisma = null;
+  
   try {
     const user = getUserFromToken(request);
     if (!user) {
@@ -86,6 +121,18 @@ export async function PUT(request) {
     }
 
     const { snsSettings } = await request.json();
+
+    // Create fresh Prisma client with hardcoded URL
+    const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+    
+    prisma = new PrismaClient({
+      datasources: {
+        db: { url: WORKING_DATABASE_URL }
+      },
+      log: ['error']
+    });
+    
+    await prisma.$connect();
 
     // Upsert SNS settings (create if not exists, update if exists)
     const updatedSnsSettings = await prisma.snsSettings.upsert({
@@ -119,13 +166,32 @@ export async function PUT(request) {
       }
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { message: 'SNS settings updated successfully', user: updatedUser },
       { status: 200 }
     );
+    
+    // Always disconnect Prisma client
+    try {
+      await prisma.$disconnect();
+    } catch (disconnectError) {
+      console.log('Profile API PUT: Disconnect error (ignored):', disconnectError.message);
+    }
+    
+    return response;
 
   } catch (error) {
     console.error('SNS settings update error:', error);
+    
+    // Ensure Prisma client is disconnected even on error
+    if (prisma) {
+      try {
+        await prisma.$disconnect();
+      } catch (endError) {
+        console.log('Profile API PUT: Error disconnecting Prisma:', endError.message);
+      }
+    }
+    
     return NextResponse.json(
       { error: 'Server error occurred' },
       { status: 500 }
