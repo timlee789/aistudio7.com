@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 
 // Hardcoded DATABASE_URL to bypass Vercel env var issues
 const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
@@ -89,12 +90,16 @@ export async function POST(request) {
     } else {
       console.log('👤 Google OAuth API: Creating new user...');
       
+      // Generate unique ID - use crypto UUID for better compatibility
+      const userId = randomUUID().replace(/-/g, '');
+      console.log('🆔 Google OAuth API: Generated user ID:', userId);
+      
       // Create new user
       const hashedPassword = await bcrypt.hash(`google_${googleId}_${Date.now()}`, 10);
       
       const newUsers = await prisma.$queryRaw`
-        INSERT INTO users (name, email, password, "googleId", phone, company, role, "createdAt", "updatedAt")
-        VALUES (${name}, ${email.toLowerCase()}, ${hashedPassword}, ${googleId}, '', '', 'CLIENT', NOW(), NOW())
+        INSERT INTO users (id, name, email, password, "googleId", phone, company, role, "createdAt", "updatedAt")
+        VALUES (${userId}, ${name}, ${email.toLowerCase()}, ${hashedPassword}, ${googleId}, '', '', 'CLIENT', NOW(), NOW())
         RETURNING id, name, email, company, phone, role, "googleId"
       `;
       

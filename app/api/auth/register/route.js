@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
-import { createId } from '@paralleldrive/cuid2';
+import { randomUUID } from 'crypto';
 
 // Hardcoded DATABASE_URL to bypass Vercel env var issues
 const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
@@ -60,8 +60,8 @@ export async function POST(request) {
 
     console.log('👤 Register API: Creating new user...');
     
-    // Generate unique ID
-    const userId = createId();
+    // Generate unique ID - use crypto UUID for better compatibility
+    const userId = randomUUID().replace(/-/g, '');
     console.log('🆔 Register API: Generated user ID:', userId);
     
     // Create new user with raw query
