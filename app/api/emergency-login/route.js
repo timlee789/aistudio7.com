@@ -7,8 +7,10 @@ import { PrismaClient } from '@prisma/client';
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 const EMERGENCY_JWT_SECRET = "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
 
+// Global prisma instance
+let globalLoginPrisma;
+
 export async function POST(request) {
-  let emergencyPrisma;
   
   try {
     console.log('🚨 Emergency Login: Starting...');
@@ -20,19 +22,22 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    // Create emergency Prisma client
-    emergencyPrisma = new PrismaClient({
-      datasources: {
-        db: { url: EMERGENCY_DB_URL }
-      }
-    });
-
-    console.log('🔍 Emergency Login: Connecting to database...');
-    await emergencyPrisma.$connect();
-    console.log('✅ Emergency Login: Database connected!');
+    // Use global prisma instance or create new one
+    if (!globalLoginPrisma) {
+      console.log('🔍 Emergency Login: Creating new Prisma client...');
+      globalLoginPrisma = new PrismaClient({
+        datasources: {
+          db: { url: EMERGENCY_DB_URL }
+        }
+      });
+      await globalLoginPrisma.$connect();
+      console.log('✅ Emergency Login: Database connected!');
+    } else {
+      console.log('✅ Emergency Login: Using existing Prisma client');
+    }
 
     // Find user
-    const user = await emergencyPrisma.user.findUnique({
+    const user = await globalLoginPrisma.user.findUnique({
       where: { email: email.toLowerCase() }
     });
 
@@ -92,8 +97,7 @@ export async function POST(request) {
       details: error.message 
     }, { status: 500 });
   } finally {
-    if (emergencyPrisma) {
-      await emergencyPrisma.$disconnect();
-    }
+    // Keep connection alive for better performance
+    console.log('🔄 Emergency Login: Keeping connection alive');
   }
 }

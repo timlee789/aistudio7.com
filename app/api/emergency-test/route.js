@@ -3,29 +3,34 @@ import { PrismaClient } from '@prisma/client';
 
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
+// Global prisma instance to avoid "prepared statement already exists" error
+let globalPrisma;
+
 export async function GET() {
-  let emergencyPrisma;
   
   try {
     console.log('🚨 Emergency Test: Starting database test...');
     
-    // Create emergency Prisma client
-    emergencyPrisma = new PrismaClient({
-      datasources: {
-        db: { url: EMERGENCY_DB_URL }
-      }
-    });
-
-    console.log('🔗 Emergency Test: Connecting...');
-    await emergencyPrisma.$connect();
-    console.log('✅ Emergency Test: Connected!');
+    // Use global prisma instance or create new one
+    if (!globalPrisma) {
+      console.log('🔗 Emergency Test: Creating new Prisma client...');
+      globalPrisma = new PrismaClient({
+        datasources: {
+          db: { url: EMERGENCY_DB_URL }
+        }
+      });
+      await globalPrisma.$connect();
+      console.log('✅ Emergency Test: New Prisma client connected!');
+    } else {
+      console.log('✅ Emergency Test: Using existing Prisma client');
+    }
 
     // Test user count
-    const userCount = await emergencyPrisma.user.count();
+    const userCount = await globalPrisma.user.count();
     console.log('👥 Emergency Test: User count:', userCount);
 
     // Test admin user
-    const adminUser = await emergencyPrisma.user.findUnique({
+    const adminUser = await globalPrisma.user.findUnique({
       where: { email: 'admin@aistudio7.com' }
     });
     console.log('🔑 Emergency Test: Admin exists:', !!adminUser);
@@ -51,8 +56,7 @@ export async function GET() {
       timestamp: new Date().toISOString()
     }, { status: 500 });
   } finally {
-    if (emergencyPrisma) {
-      await emergencyPrisma.$disconnect();
-    }
+    // Don't disconnect global prisma to avoid reconnection issues
+    console.log('🔄 Emergency Test: Keeping connection alive for reuse');
   }
 }
