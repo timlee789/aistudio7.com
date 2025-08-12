@@ -10,34 +10,22 @@ export async function POST(request) {
   let prisma = null;
   
   try {
-    console.log('🔐 Register API: Starting registration process...');
-    console.log('🔍 Register API: Environment check - DATABASE_URL set:', !!process.env.DATABASE_URL);
-    console.log('🔍 Register API: Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);
-    console.log('🔍 Register API: Environment check - NODE_ENV:', process.env.NODE_ENV);
-    
     const { name, email, password, company, phone } = await request.json();
-    console.log('📨 Register API: Registration data received for:', email);
 
     // Validation check
     if (!name || !email || !password || !phone) {
-      console.log('❌ Register API: Missing required fields');
       return NextResponse.json(
         { error: 'Please fill in all required fields' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 Register API: Creating fresh Prisma client...');
-    
     // Create fresh Prisma client for each request to avoid prepared statement issues
     prisma = new PrismaClient({
       log: ['error']
     });
     
     await prisma.$connect();
-    console.log('✅ Register API: Database connected!');
-
-    console.log('🔍 Register API: Checking for existing user...');
     
     // Check for duplicate email with raw query to avoid prepared statement caching
     const existingUsers = await prisma.$queryRaw`
@@ -45,26 +33,18 @@ export async function POST(request) {
     `;
 
     if (existingUsers.length > 0) {
-      console.log('❌ Register API: Email already exists:', email);
       return NextResponse.json(
         { error: 'Email already exists' },
         { status: 400 }
       );
     }
 
-    console.log('🔒 Register API: Hashing password...');
-    
     // Password hashing
     const saltRounds = 12;
     const hashedPassword = await bcryptjs.hash(password, saltRounds);
 
-    console.log('👤 Register API: Creating new user...');
-    
     // Generate unique ID - use crypto UUID for better compatibility
-    console.log('🔍 Register API: Testing crypto module...');
     const userId = randomUUID().replace(/-/g, '');
-    console.log('🆔 Register API: Generated user ID:', userId);
-    console.log('✅ Register API: Crypto module working correctly');
     
     // Create new user with raw query
     const newUserResult = await prisma.$queryRaw`
@@ -74,7 +54,6 @@ export async function POST(request) {
     `;
     
     const newUser = newUserResult[0];
-    console.log('✅ Register API: User created successfully:', newUser.email);
 
     // Exclude password from response
     const userResponse = {
@@ -88,11 +67,9 @@ export async function POST(request) {
 
     // Always disconnect Prisma client
     try {
-      console.log('🔌 Register API: Disconnecting Prisma client...');
       await prisma.$disconnect();
-      console.log('✅ Register API: Disconnected cleanly');
     } catch (disconnectError) {
-      console.log('⚠️ Register API: Disconnect error (ignored):', disconnectError.message);
+      console.error('Register API: Disconnect error:', disconnectError.message);
     }
 
     return NextResponse.json(
@@ -101,17 +78,14 @@ export async function POST(request) {
     );
 
   } catch (error) {
-    console.error('💥 Register API: Detailed error occurred:', error);
-    console.error('💥 Register API: Error name:', error.name);
-    console.error('💥 Register API: Error message:', error.message);
-    console.error('💥 Register API: Error stack:', error.stack);
+    console.error('Register API error:', error);
     
     // Ensure Prisma client is disconnected even on error
     if (prisma) {
       try {
         await prisma.$disconnect();
       } catch (endError) {
-        console.log('⚠️ Register API: Error disconnecting Prisma:', endError.message);
+        console.error('Register API: Error disconnecting Prisma:', endError.message);
       }
     }
     

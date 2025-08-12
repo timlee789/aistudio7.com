@@ -16,8 +16,6 @@ function getUserFromToken(request) {
 }
 
 export async function GET(request, { params }) {
-  console.log('👤 User Payments API: GET request received for user:', params.userId);
-  
   try {
     // Check authentication and admin role
     const user = getUserFromToken(request);
@@ -39,8 +37,6 @@ export async function GET(request, { params }) {
         { status: 403 }
       );
     }
-
-    console.log('✅ Admin verified, fetching user payments...');
 
     // Get user details with payments
     const userWithPayments = await prisma.user.findUnique({
@@ -64,14 +60,12 @@ export async function GET(request, { params }) {
     // Remove password from response
     const { password, ...userSafeData } = userWithPayments;
 
-    console.log(`📊 Found user with ${userWithPayments.payments.length} payments`);
-
     return NextResponse.json({
       user: userSafeData
     });
 
   } catch (error) {
-    console.error('💥 User Payments API error:', error);
+    console.error('User Payments API error:', error);
     return NextResponse.json(
       { error: 'Server error occurred' },
       { status: 500 }

@@ -186,7 +186,6 @@ export async function DELETE(request) {
       const filepath = join(process.cwd(), 'public', 'uploads', banner.filename);
       await fs.unlink(filepath);
     } catch (fileError) {
-      console.log('File deletion warning:', fileError.message);
       // Continue even if file deletion fails
     }
 

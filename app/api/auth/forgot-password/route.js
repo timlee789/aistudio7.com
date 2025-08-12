@@ -102,7 +102,7 @@ export async function POST(request) {
         // Don't fail the request if email fails - log for debugging
       }
     } else {
-      console.log('Email not configured. Reset URL:', resetUrl);
+      // Email not configured - in production, log securely
     }
 
     return successResponse;

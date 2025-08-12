@@ -7,31 +7,22 @@ export async function POST(request) {
   let prisma = null;
   
   try {
-    console.log('🔐 Login API: Starting login process...');
-    
     const { email, password } = await request.json();
-    console.log('📨 Login API: Email received:', email);
 
     // Validation check
     if (!email || !password) {
-      console.log('❌ Login API: Missing email or password');
       return NextResponse.json(
         { error: 'Please enter email and password' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 Login API: Creating fresh Prisma client...');
-    
     // Create fresh Prisma client for each request to avoid prepared statement issues
     prisma = new PrismaClient({
       log: ['error']
     });
     
     await prisma.$connect();
-    console.log('✅ Login API: Database connected!');
-    
-    console.log('🔍 Login API: Searching for user in database...');
     
     // Find user including SNS settings with raw query to avoid prepared statement caching
     const users = await prisma.$queryRaw`
@@ -60,33 +51,24 @@ export async function POST(request) {
       } : null
     } : null;
 
-    console.log('👤 Login API: User found:', user ? `${user.email} (${user.role})` : 'No user found');
 
     if (!user) {
-      console.log('❌ Login API: User not found for email:', email);
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    console.log('🔒 Login API: Verifying password...');
-    
     // Password verification
     const isPasswordValid = await bcryptjs.compare(password, user.password);
-    console.log('🔐 Login API: Password valid:', isPasswordValid);
     
     if (!isPasswordValid) {
-      console.log('❌ Login API: Invalid password for user:', email);
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    console.log('🎫 Login API: Generating JWT token...');
-    console.log('🔑 Login API: JWT_SECRET exists:', !!process.env.JWT_SECRET);
-    
     // Generate JWT token
     const token = jwt.sign(
       { 
@@ -97,8 +79,6 @@ export async function POST(request) {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    console.log('✅ Login API: JWT token generated successfully');
 
     // Exclude password from response
     const userResponse = {
@@ -117,7 +97,6 @@ export async function POST(request) {
     );
 
     // Set token as HTTP-only cookie
-    console.log('Login API: Setting cookie with token for user:', user.id);
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -126,38 +105,24 @@ export async function POST(request) {
       maxAge: 7 * 24 * 60 * 60 // 7 days
     });
 
-    console.log('Login API: Cookie settings:', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60,
-      tokenLength: token.length
-    });
-
     // Always disconnect Prisma client
     try {
-      console.log('🔌 Login API: Disconnecting Prisma client...');
       await prisma.$disconnect();
-      console.log('✅ Login API: Disconnected cleanly');
     } catch (disconnectError) {
-      console.log('⚠️ Login API: Disconnect error (ignored):', disconnectError.message);
+      console.error('Login API: Disconnect error:', disconnectError.message);
     }
 
     return response;
 
   } catch (error) {
-    console.error('💥 Login API: Detailed error occurred:', error);
-    console.error('💥 Login API: Error name:', error.name);
-    console.error('💥 Login API: Error message:', error.message);
-    console.error('💥 Login API: Error stack:', error.stack);
+    console.error('Login API error:', error);
     
     // Ensure Prisma client is disconnected even on error
     if (prisma) {
       try {
         await prisma.$disconnect();
       } catch (endError) {
-        console.log('⚠️ Login API: Error disconnecting Prisma:', endError.message);
+        console.error('Login API: Error disconnecting Prisma:', endError.message);
       }
     }
     

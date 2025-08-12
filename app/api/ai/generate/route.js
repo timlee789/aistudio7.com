@@ -4,14 +4,11 @@ import prisma from '@/lib/prisma-new';
 import ComfyUIService from '@/lib/comfyui';
 
 export async function POST(request) {
-  console.log('=== AI Generate API Called ===');
   try {
     // Check authentication
     const token = request.cookies.get('token')?.value;
-    console.log('Token found:', !!token);
     
     if (!token) {
-      console.log('No token provided');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -21,9 +18,7 @@ export async function POST(request) {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Token decoded successfully for user:', decoded.email);
     } catch (error) {
-      console.log('Token verification failed:', error.message);
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
@@ -31,7 +26,6 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    console.log('Request body:', body);
     const { orderId, prompt, negativePrompt, options } = body;
 
     if (!prompt) {
@@ -130,10 +124,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('=== AI Generation Error ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('=======================');
+    console.error('AI Generation Error:', error.message);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

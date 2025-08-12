@@ -16,8 +16,6 @@ function getUserFromToken(request) {
 }
 
 export async function GET(request) {
-  console.log('🏦 Admin Payments API: GET request received');
-  
   try {
     // Check authentication and admin role
     const user = getUserFromToken(request);
@@ -40,8 +38,6 @@ export async function GET(request) {
       );
     }
 
-    console.log('✅ Admin verified, fetching payments...');
-
     // Get all payments with user information
     const payments = await prisma.payment.findMany({
       include: {
@@ -61,8 +57,6 @@ export async function GET(request) {
       }
     });
 
-    console.log(`📊 Found ${payments.length} payments`);
-
     // Calculate statistics
     const stats = {
       totalPayments: payments.length,
@@ -80,7 +74,7 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error('💥 Admin Payments API error:', error);
+    console.error('Admin Payments API error:', error);
     return NextResponse.json(
       { error: 'Server error occurred' },
       { status: 500 }

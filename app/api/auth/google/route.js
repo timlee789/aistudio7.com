@@ -14,20 +14,15 @@ export async function POST(request) {
   let prisma = null;
   
   try {
-    console.log('🔐 Google OAuth API: Starting authentication process...');
-    
     const { token } = await request.json();
 
     if (!token) {
-      console.log('❌ Google OAuth API: Missing Google token');
       return NextResponse.json(
         { error: 'Google token is required' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 Google OAuth API: Verifying Google token...');
-    
     // Verify Google token
     const ticket = await client.verifyIdToken({
       idToken: token,
@@ -38,25 +33,18 @@ export async function POST(request) {
     const { email, name, picture, sub: googleId } = payload;
 
     if (!email) {
-      console.log('❌ Google OAuth API: Email not provided by Google');
       return NextResponse.json(
         { error: 'Email not provided by Google' },
         { status: 400 }
       );
     }
 
-    console.log('📨 Google OAuth API: Google user verified:', email);
-
     // Create fresh Prisma client
-    console.log('🔍 Google OAuth API: Creating fresh Prisma client...');
     prisma = new PrismaClient({
       log: ['error']
     });
     
     await prisma.$connect();
-    console.log('✅ Google OAuth API: Database connected!');
-
-    console.log('🔍 Google OAuth API: Checking for existing user...');
     
     // Check if user already exists with raw query
     const existingUsers = await prisma.$queryRaw`
@@ -70,11 +58,9 @@ export async function POST(request) {
     
     if (existingUsers.length > 0) {
       user = existingUsers[0];
-      console.log('👤 Google OAuth API: User exists:', user.email);
       
       // User exists, update Google ID if not set
       if (!user.googleId) {
-        console.log('🔄 Google OAuth API: Updating Google ID...');
         const updatedUsers = await prisma.$queryRaw`
           UPDATE users 
           SET "googleId" = ${googleId}, "updatedAt" = NOW()
@@ -84,11 +70,8 @@ export async function POST(request) {
         user = updatedUsers[0];
       }
     } else {
-      console.log('👤 Google OAuth API: Creating new user...');
-      
       // Generate unique ID - use crypto UUID for better compatibility
       const userId = randomUUID().replace(/-/g, '');
-      console.log('🆔 Google OAuth API: Generated user ID:', userId);
       
       // Create new user
       const hashedPassword = await bcrypt.hash(`google_${googleId}_${Date.now()}`, 10);
@@ -100,11 +83,8 @@ export async function POST(request) {
       `;
       
       user = newUsers[0];
-      console.log('✅ Google OAuth API: New user created:', user.email);
     }
 
-    console.log('🎫 Google OAuth API: Generating JWT token...');
-    
     // Generate JWT token
     const jwtToken = jwt.sign(
       { 
@@ -116,8 +96,6 @@ export async function POST(request) {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    console.log('✅ Google OAuth API: JWT token generated successfully');
 
     const response = NextResponse.json({
       success: true,
@@ -139,27 +117,22 @@ export async function POST(request) {
 
     // Always disconnect Prisma client
     try {
-      console.log('🔌 Google OAuth API: Disconnecting Prisma client...');
       await prisma.$disconnect();
-      console.log('✅ Google OAuth API: Disconnected cleanly');
     } catch (disconnectError) {
-      console.log('⚠️ Google OAuth API: Disconnect error (ignored):', disconnectError.message);
+      console.error('Google OAuth API: Disconnect error:', disconnectError.message);
     }
 
     return response;
 
   } catch (error) {
-    console.error('💥 Google OAuth API: Detailed error occurred:', error);
-    console.error('💥 Google OAuth API: Error name:', error.name);
-    console.error('💥 Google OAuth API: Error message:', error.message);
-    console.error('💥 Google OAuth API: Error stack:', error.stack);
+    console.error('Google OAuth API error:', error);
     
     // Ensure Prisma client is disconnected even on error
     if (prisma) {
       try {
         await prisma.$disconnect();
       } catch (endError) {
-        console.log('⚠️ Google OAuth API: Error disconnecting Prisma:', endError.message);
+        console.error('Google OAuth API: Error disconnecting Prisma:', endError.message);
       }
     }
     

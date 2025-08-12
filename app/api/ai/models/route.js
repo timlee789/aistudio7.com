@@ -17,8 +17,6 @@ export async function GET() {
     const checkpointLoader = objectInfo['CheckpointLoaderSimple'];
     const availableModels = checkpointLoader?.input?.required?.ckpt_name?.[0] || [];
     
-    console.log('Available models:', availableModels);
-    
     return NextResponse.json({
       success: true,
       models: availableModels,

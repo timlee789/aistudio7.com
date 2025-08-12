@@ -20,22 +20,11 @@ const mockStripe = {
 };
 
 export async function POST(request) {
-  console.log('💰 === Payment Session API Called ===');
   try {
-    // Debug: Check all cookies
-    const allCookies = request.cookies.getAll();
-    console.log('🍪 Payment API: All cookies received:', allCookies);
-    
     // Check authentication
     const token = request.cookies.get('token')?.value;
-    console.log('🍪 Payment API: Token found:', !!token);
-    if (token) {
-      console.log('🍪 Payment API: Token length:', token.length);
-      console.log('🍪 Payment API: Token start:', token.substring(0, 20) + '...');
-    }
     
     if (!token) {
-      console.log('❌ Payment API: No token provided');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -45,9 +34,7 @@ export async function POST(request) {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('✅ Payment API: Token decoded successfully for user:', decoded.email, '| User ID:', decoded.userId);
     } catch (error) {
-      console.log('❌ Payment API: Token verification failed:', error.message);
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
@@ -55,11 +42,9 @@ export async function POST(request) {
     }
     
     const body = await request.json();
-    console.log('Request body:', body);
     const { serviceType, serviceName, amount, serviceDetails } = body;
 
     if (!serviceType || !serviceName || !amount) {
-      console.log('Missing required fields:', { serviceType, serviceName, amount });
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -117,10 +102,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('=== Payment Creation Error ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('=======================');
+    console.error('Payment Creation Error:', error.message);
     return NextResponse.json(
       { error: 'Failed to create payment session', details: error.message },
       { status: 500 }
