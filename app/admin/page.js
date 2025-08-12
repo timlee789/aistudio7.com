@@ -51,6 +51,7 @@ export default function AdminDashboard() {
   // Customer details with payments state
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState(null);
   const [loadingCustomerDetails, setLoadingCustomerDetails] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const router = useRouter();
   const pathname = usePathname();
@@ -520,7 +521,28 @@ export default function AdminDashboard() {
                 <h1 className="text-2xl font-bold text-purple-600" style={{ fontFamily: 'Myriad Pro, Arial, sans-serif', cursor: 'pointer' }}>AiStudio7.com - Admin</h1>
               </a>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Mobile menu button */}
+            <div className="mobile-menu-toggle flex lg:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="mobile-hamburger text-gray-700 hover:text-purple-600"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                {mobileMenuOpen ? '✕' : '☰'}
+              </button>
+            </div>
+            
+            {/* Desktop menu */}
+            <div className="hidden lg:flex lg:items-center lg:space-x-4">
               <span className="text-gray-700">Welcome, {user?.name}</span>
               <a 
                 href="/" 
@@ -551,6 +573,44 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+        
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="mobile-menu lg:hidden" style={{ background: '#f4d03f', borderTop: '1px solid #e5e7eb' }}>
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <span className="mobile-menu-item block px-3 py-2 text-gray-700 text-base font-medium">Welcome, {user?.name}</span>
+              <a 
+                href="/" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-purple-600"
+                style={{
+                  fontWeight: pathname === '/' ? 'bold' : 'normal',
+                  color: pathname === '/' ? '#7c3aed' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Home
+              </a>
+              <a 
+                href="/admin" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-purple-600"
+                style={{
+                  fontWeight: pathname === '/admin' ? 'bold' : 'normal',
+                  color: pathname === '/admin' ? '#7c3aed' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Admin
+              </a>
+              <button 
+                onClick={logout}
+                className="mobile-menu-item w-full text-left block px-3 py-2 rounded-md text-base font-medium bg-red-500 hover:bg-red-700 text-white mt-2"
+                style={{ border: 'none', cursor: 'pointer' }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

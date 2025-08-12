@@ -10,6 +10,7 @@ export default function ClientPortal() {
   const [loading, setLoading] = useState(true);
   const [hasPaidService, setHasPaidService] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const { user, logout } = useAuth();
   const pathname = usePathname();
@@ -154,7 +155,28 @@ export default function ClientPortal() {
                 <h1 className="text-2xl font-bold text-indigo-600" style={{ fontFamily: 'Myriad Pro, Arial, sans-serif', cursor: 'pointer' }}>AiStudio7.com</h1>
               </a>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Mobile menu button */}
+            <div className="mobile-menu-toggle flex lg:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="mobile-hamburger text-gray-700 hover:text-indigo-600"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                {mobileMenuOpen ? '✕' : '☰'}
+              </button>
+            </div>
+            
+            {/* Desktop menu */}
+            <div className="hidden lg:flex lg:items-center lg:space-x-4">
               <a 
                 href="/" 
                 className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
@@ -232,6 +254,95 @@ export default function ClientPortal() {
             </div>
           </div>
         </div>
+        
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="mobile-menu lg:hidden" style={{ background: '#f4d03f', borderTop: '1px solid #e5e7eb' }}>
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <a 
+                href="/" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname === '/' ? 'bold' : 'normal',
+                  color: pathname === '/' ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Home
+              </a>
+              <a 
+                href="/services" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Services
+              </a>
+              <a 
+                href="/client-portal" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname === '/client-portal' ? 'bold' : 'normal',
+                  color: pathname === '/client-portal' ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                My Portal
+              </a>
+              <a 
+                href="/service-request" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname === '/service-request' ? 'bold' : 'normal',
+                  color: pathname === '/service-request' ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Service Request
+              </a>
+              <a 
+                href="/sns-settings" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname === '/sns-settings' ? 'bold' : 'normal',
+                  color: pathname === '/sns-settings' ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                SNS Settings
+              </a>
+              {user && user.role === 'ADMIN' && (
+                <a 
+                  href="/admin" 
+                  className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                  style={{
+                    fontWeight: pathname === '/admin' ? 'bold' : 'normal',
+                    color: pathname === '/admin' ? '#4f46e5' : '#374151',
+                    textDecoration: 'none'
+                  }}
+                >
+                  Admin
+                </a>
+              )}
+              {user ? (
+                <button 
+                  onClick={logout}
+                  className="mobile-menu-item w-full text-left block px-3 py-2 rounded-md text-base font-medium bg-red-500 hover:bg-red-700 text-white mt-2"
+                  style={{ border: 'none', cursor: 'pointer' }}
+                >
+                  Logout
+                </button>
+              ) : (
+                <a href="/login" className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600" style={{ textDecoration: 'none' }}>
+                  Login
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

@@ -9,6 +9,7 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const sessionId = searchParams.get('session_id');
   const amount = searchParams.get('amount');
