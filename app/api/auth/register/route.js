@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
+import { createId } from '@paralleldrive/cuid2';
 
 // Hardcoded DATABASE_URL to bypass Vercel env var issues
 const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
@@ -59,10 +60,14 @@ export async function POST(request) {
 
     console.log('👤 Register API: Creating new user...');
     
+    // Generate unique ID
+    const userId = createId();
+    console.log('🆔 Register API: Generated user ID:', userId);
+    
     // Create new user with raw query
     const newUserResult = await prisma.$queryRaw`
-      INSERT INTO users (name, email, password, company, phone, role, "createdAt", "updatedAt")
-      VALUES (${name}, ${email.toLowerCase()}, ${hashedPassword}, ${company || ''}, ${phone}, 'CLIENT', NOW(), NOW())
+      INSERT INTO users (id, name, email, password, company, phone, role, "createdAt", "updatedAt")
+      VALUES (${userId}, ${name}, ${email.toLowerCase()}, ${hashedPassword}, ${company || ''}, ${phone}, 'CLIENT', NOW(), NOW())
       RETURNING id, name, email, company, phone, role, "createdAt"
     `;
     

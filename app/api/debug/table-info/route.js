@@ -42,7 +42,7 @@ export async function GET() {
 
     // Get count of users
     const userCount = await prisma.$queryRaw`
-      SELECT COUNT(*) as count FROM users;
+      SELECT COUNT(*)::int as count FROM users;
     `;
 
     // Disconnect
@@ -55,7 +55,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       tableExists: tableExists[0]?.exists || false,
-      userCount: userCount[0]?.count || 0,
+      userCount: Number(userCount[0]?.count || 0),
       columns: tableInfo,
       timestamp: new Date().toISOString()
     });
