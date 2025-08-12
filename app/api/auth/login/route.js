@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma-new';
+import { PrismaClient } from '@prisma/client';
+
+// Direct database connection to bypass environment variable issues
+const WORKING_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+const directPrisma = new PrismaClient({
+  datasources: {
+    db: { url: WORKING_DB_URL }
+  }
+});
 
 export async function POST(request) {
   try {
@@ -22,7 +30,7 @@ export async function POST(request) {
     console.log('🔍 Login API: Searching for user in database...');
     
     // Find user (including SNS settings)
-    const user = await prisma.user.findUnique({
+    const user = await directPrisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: {
         snsSettings: true
