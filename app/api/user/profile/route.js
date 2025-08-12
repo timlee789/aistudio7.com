@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 
+// Hardcoded DATABASE_URL to bypass Vercel env var issues
+const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+const JWT_SECRET = process.env.JWT_SECRET || "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
+
 // Extract user information from token
 function getUserFromToken(request) {
   try {
@@ -17,7 +21,7 @@ function getUserFromToken(request) {
     }
     if (!token) return null;
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     console.log('✅ Profile API: Token decoded successfully for user:', decoded.userId);
     return decoded;
   } catch (error) {
@@ -44,8 +48,6 @@ export async function GET(request) {
     console.log('Profile API: User found from token, fetching profile for:', user.userId);
 
     // Create fresh Prisma client with hardcoded URL
-    const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
-    
     prisma = new PrismaClient({
       datasources: {
         db: { url: WORKING_DATABASE_URL }
@@ -77,26 +79,24 @@ export async function GET(request) {
       );
     }
 
-    const response = NextResponse.json({ user: userProfile }, { status: 200 });
-    
-    // Always disconnect Prisma client
+    // Disconnect before returning
     try {
       await prisma.$disconnect();
     } catch (disconnectError) {
-      console.log('Profile API: Disconnect error (ignored):', disconnectError.message);
+      console.log('⚠️ Profile API: Disconnect error (ignored):', disconnectError.message);
     }
-    
-    return response;
+
+    return NextResponse.json({ user: userProfile }, { status: 200 });
 
   } catch (error) {
     console.error('Profile fetch error:', error);
     
-    // Ensure Prisma client is disconnected even on error
+    // Ensure disconnect on error
     if (prisma) {
       try {
         await prisma.$disconnect();
-      } catch (endError) {
-        console.log('Profile API: Error disconnecting Prisma:', endError.message);
+      } catch (disconnectError) {
+        console.log('⚠️ Profile API: Error disconnecting:', disconnectError.message);
       }
     }
     
@@ -123,8 +123,6 @@ export async function PUT(request) {
     const { snsSettings } = await request.json();
 
     // Create fresh Prisma client with hardcoded URL
-    const WORKING_DATABASE_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
-    
     prisma = new PrismaClient({
       datasources: {
         db: { url: WORKING_DATABASE_URL }
@@ -166,29 +164,27 @@ export async function PUT(request) {
       }
     });
 
-    const response = NextResponse.json(
-      { message: 'SNS settings updated successfully', user: updatedUser },
-      { status: 200 }
-    );
-    
-    // Always disconnect Prisma client
+    // Disconnect before returning
     try {
       await prisma.$disconnect();
     } catch (disconnectError) {
-      console.log('Profile API PUT: Disconnect error (ignored):', disconnectError.message);
+      console.log('⚠️ Profile API: Disconnect error (ignored):', disconnectError.message);
     }
-    
-    return response;
+
+    return NextResponse.json(
+      { message: 'SNS settings updated successfully', user: updatedUser },
+      { status: 200 }
+    );
 
   } catch (error) {
     console.error('SNS settings update error:', error);
     
-    // Ensure Prisma client is disconnected even on error
+    // Ensure disconnect on error
     if (prisma) {
       try {
         await prisma.$disconnect();
-      } catch (endError) {
-        console.log('Profile API PUT: Error disconnecting Prisma:', endError.message);
+      } catch (disconnectError) {
+        console.log('⚠️ Profile API: Error disconnecting:', disconnectError.message);
       }
     }
     
