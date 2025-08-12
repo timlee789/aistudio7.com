@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { Client } from 'pg';
 
 // Emergency login endpoint with completely hardcoded values
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 const EMERGENCY_JWT_SECRET = "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
 
 export async function POST(request) {
-  // Create unique instance identifier
   const uniqueId = Date.now() + Math.random().toString(36);
-  console.log('🚨 Emergency Login: Starting...', uniqueId);
+  console.log('🚨 Emergency Login: Starting RAW SQL login...', uniqueId);
+  
+  let client = null;
   
   try {
     const { email, password } = await request.json();
@@ -20,22 +21,23 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    // Create fresh Prisma client each time with unique config
-    console.log('🔍 Emergency Login: Creating fresh Prisma client...');
-    const freshLoginPrisma = new PrismaClient({
-      datasources: {
-        db: { url: EMERGENCY_DB_URL }
-      },
-      log: ['error']
+    // Use raw PostgreSQL client to bypass Prisma issues
+    console.log('🔍 Emergency Login: Creating PostgreSQL client...');
+    client = new Client({
+      connectionString: EMERGENCY_DB_URL,
+      ssl: { rejectUnauthorized: false }
     });
     
-    await freshLoginPrisma.$connect();
+    await client.connect();
     console.log('✅ Emergency Login: Database connected!');
 
-    // Find user
-    const user = await freshLoginPrisma.user.findUnique({
-      where: { email: email.toLowerCase() }
-    });
+    // Find user with raw SQL
+    console.log('🔍 Emergency Login: Finding user with raw SQL...');
+    const userResult = await client.query(
+      'SELECT id, email, name, password, role FROM "User" WHERE email = $1',
+      [email.toLowerCase()]
+    );
+    const user = userResult.rows[0];
 
     console.log('👤 Emergency Login: User found:', !!user);
 
@@ -84,10 +86,10 @@ export async function POST(request) {
       maxAge: 7 * 24 * 60 * 60
     });
 
-    // Always disconnect fresh connection immediately before returning
+    // Always disconnect PostgreSQL client before returning
     try {
-      console.log('🔌 Emergency Login: Disconnecting...');
-      await freshLoginPrisma.$disconnect();
+      console.log('🔌 Emergency Login: Disconnecting PostgreSQL client...');
+      await client.end();
       console.log('✅ Emergency Login: Disconnected cleanly');
     } catch (disconnectError) {
       console.log('⚠️ Emergency Login: Disconnect error (ignored):', disconnectError.message);
@@ -97,8 +99,18 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('💥 Emergency Login Error:', error);
+    
+    // Ensure client is disconnected even on error
+    if (client) {
+      try {
+        await client.end();
+      } catch (endError) {
+        console.log('⚠️ Emergency Login: Error disconnecting client:', endError.message);
+      }
+    }
+    
     return NextResponse.json({ 
-      error: 'Emergency login failed', 
+      error: 'Emergency RAW SQL login failed', 
       details: error.message,
       uniqueId
     }, { status: 500 });
