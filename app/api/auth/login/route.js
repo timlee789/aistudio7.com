@@ -14,9 +14,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    // 데이터베이스 연결 확인
-    await prisma.$connect();
-
     // 사용자 찾기
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() }
@@ -63,7 +60,5 @@ export async function POST(request) {
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Login failed' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
