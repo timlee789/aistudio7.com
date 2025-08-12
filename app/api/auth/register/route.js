@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
-import { randomUUID } from 'crypto';
 
 // Use standard Prisma configuration with environment variables
 const JWT_SECRET = process.env.JWT_SECRET || "mRpWAlXU+fo7AqHQEaJG1NRPktETWoK7kKMka04orH8hOVrChNNhE/+jE3DoqVHsu9UzgOXATmWp6oOycKMJ6g==";
@@ -22,17 +21,22 @@ export async function POST(request) {
 
     // Create fresh Prisma client for each request to avoid prepared statement issues
     prisma = new PrismaClient({
-      log: ['error']
+      log: ['error'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL + '?pgbouncer=true&connection_limit=1'
+        }
+      }
     });
     
     await prisma.$connect();
     
-    // Check for duplicate email with raw query to avoid prepared statement caching
-    const existingUsers = await prisma.$queryRaw`
-      SELECT id, email FROM users WHERE email = ${email.toLowerCase()} LIMIT 1
-    `;
+    // Check for duplicate email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
 
-    if (existingUsers.length > 0) {
+    if (existingUser) {
       return NextResponse.json(
         { error: 'Email already exists' },
         { status: 400 }
@@ -43,17 +47,26 @@ export async function POST(request) {
     const saltRounds = 12;
     const hashedPassword = await bcryptjs.hash(password, saltRounds);
 
-    // Generate unique ID - use crypto UUID for better compatibility
-    const userId = randomUUID().replace(/-/g, '');
-    
-    // Create new user with raw query
-    const newUserResult = await prisma.$queryRaw`
-      INSERT INTO users (id, name, email, password, company, phone, role, "createdAt", "updatedAt")
-      VALUES (${userId}, ${name}, ${email.toLowerCase()}, ${hashedPassword}, ${company || ''}, ${phone}, 'CLIENT', NOW(), NOW())
-      RETURNING id, name, email, company, phone, role, "createdAt"
-    `;
-    
-    const newUser = newUserResult[0];
+    // Create new user
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        company: company || '',
+        phone,
+        role: 'CLIENT'
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        company: true,
+        phone: true,
+        role: true,
+        createdAt: true
+      }
+    });
 
     // Exclude password from response
     const userResponse = {

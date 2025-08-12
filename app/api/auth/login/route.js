@@ -17,39 +17,27 @@ export async function POST(request) {
       );
     }
 
-    // Create fresh Prisma client for each request to avoid prepared statement issues
+    // Create fresh Prisma client for each request to avoid prepared statement issues  
     prisma = new PrismaClient({
-      log: ['error']
+      log: ['error'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL + '?pgbouncer=true&connection_limit=1'
+        }
+      }
     });
     
     await prisma.$connect();
     
-    // Find user including SNS settings with raw query to avoid prepared statement caching
-    const users = await prisma.$queryRaw`
-      SELECT 
-        u.id, u.name, u.email, u.password, u.company, u.phone, u.role,
-        s.id as sns_id, s.platforms, s.settings as sns_settings
-      FROM users u
-      LEFT JOIN sns_settings s ON u.id = s."userId"
-      WHERE u.email = ${email.toLowerCase()}
-      LIMIT 1
-    `;
-    
-    const userData = users[0];
-    const user = userData ? {
-      id: userData.id,
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-      company: userData.company,
-      phone: userData.phone,
-      role: userData.role,
-      snsSettings: userData.sns_id ? {
-        id: userData.sns_id,
-        platforms: userData.platforms,
-        settings: userData.sns_settings
-      } : null
-    } : null;
+    // Find user including SNS settings
+    const user = await prisma.user.findUnique({
+      where: { 
+        email: email.toLowerCase() 
+      },
+      include: {
+        snsSettings: true
+      }
+    });
 
 
     if (!user) {
