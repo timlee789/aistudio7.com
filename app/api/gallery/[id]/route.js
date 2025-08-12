@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma-new';
+import { Client } from 'pg';
 import jwt from 'jsonwebtoken';
 import { unlink } from 'fs/promises';
 import path from 'path';
@@ -19,6 +19,11 @@ function getUserFromToken(request) {
 
 // Delete gallery item (DELETE)
 export async function DELETE(request, { params }) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     const user = getUserFromToken(request);
     if (!user || user.role !== 'ADMIN') {
@@ -28,16 +33,22 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const galleryItem = await prisma.galleryItem.findUnique({
-      where: { id: params.id }
-    });
+    await client.connect();
 
-    if (!galleryItem) {
+    const galleryResult = await client.query(
+      'SELECT * FROM gallery_items WHERE id = $1',
+      [params.id]
+    );
+
+    if (galleryResult.rows.length === 0) {
+      await client.end();
       return NextResponse.json(
         { error: 'Gallery item not found' },
         { status: 404 }
       );
     }
+
+    const galleryItem = galleryResult.rows[0];
 
     // Delete file from filesystem
     try {
@@ -49,9 +60,9 @@ export async function DELETE(request, { params }) {
     }
 
     // Delete from database
-    await prisma.galleryItem.delete({
-      where: { id: params.id }
-    });
+    await client.query('DELETE FROM gallery_items WHERE id = $1', [params.id]);
+    
+    await client.end();
 
     return NextResponse.json(
       { message: 'Gallery item deleted successfully' },
@@ -60,6 +71,13 @@ export async function DELETE(request, { params }) {
 
   } catch (error) {
     console.error('Gallery deletion error:', error);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json(
       { error: 'Server error occurred' },
       { status: 500 }
@@ -69,6 +87,11 @@ export async function DELETE(request, { params }) {
 
 // Update gallery item (PUT)
 export async function PUT(request, { params }) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     const user = getUserFromToken(request);
     if (!user || user.role !== 'ADMIN') {
@@ -80,22 +103,64 @@ export async function PUT(request, { params }) {
 
     const { title, description, isActive } = await request.json();
 
-    const updatedItem = await prisma.galleryItem.update({
-      where: { id: params.id },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(description !== undefined && { description }),
-        ...(isActive !== undefined && { isActive })
-      }
-    });
+    await client.connect();
+
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (title !== undefined) {
+      updates.push(`title = $${paramCount}`);
+      values.push(title);
+      paramCount++;
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramCount}`);
+      values.push(description);
+      paramCount++;
+    }
+    if (isActive !== undefined) {
+      updates.push(`"isActive" = $${paramCount}`);
+      values.push(isActive);
+      paramCount++;
+    }
+
+    updates.push(`"updatedAt" = NOW()`);
+    values.push(params.id);
+
+    const updateQuery = `
+      UPDATE gallery_items 
+      SET ${updates.join(', ')} 
+      WHERE id = $${paramCount}
+      RETURNING *
+    `;
+
+    const result = await client.query(updateQuery, values);
+    
+    await client.end();
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Gallery item not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
-      { message: 'Gallery item updated successfully', item: updatedItem },
+      { message: 'Gallery item updated successfully', item: result.rows[0] },
       { status: 200 }
     );
 
   } catch (error) {
     console.error('Gallery update error:', error);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json(
       { error: 'Server error occurred' },
       { status: 500 }
