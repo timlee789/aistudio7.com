@@ -96,6 +96,10 @@
             Test Database Connection
         </button>
         
+        <button onclick="simpleTest()" class="test-btn" id="simpleTestBtn" style="background: #7c3aed; margin-bottom: 10px;">
+            Simple API Test
+        </button>
+        
         <form onsubmit="emergencyLogin(event)">
             <div class="form-group">
                 <label for="email">Email:</label>
@@ -112,6 +116,33 @@
     </div>
 
     <script>
+        async function simpleTest() {
+            const simpleTestBtn = document.getElementById('simpleTestBtn');
+            const result = document.getElementById('result');
+            
+            simpleTestBtn.disabled = true;
+            simpleTestBtn.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/simple-test');
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.className = 'result success';
+                    result.textContent = `✅ Simple API Test Successful!\nEnvironment: ${data.environment.NODE_ENV}\nHas DB URL: ${data.environment.hasDbUrl}\nTimestamp: ${data.timestamp}`;
+                } else {
+                    result.className = 'result error';
+                    result.textContent = `❌ Simple API Test Failed:\n${data.error}\nDetails: ${data.details}`;
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = `❌ Network Error: ${error.message}`;
+            }
+            
+            simpleTestBtn.disabled = false;
+            simpleTestBtn.textContent = 'Simple API Test';
+        }
+
         async function testDatabase() {
             const testBtn = document.getElementById('testBtn');
             const result = document.getElementById('result');
