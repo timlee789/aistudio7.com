@@ -320,6 +320,16 @@ export default function Login() {
                 Home
               </a>
               <a 
+                href="/services" 
+                className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151'
+                }}
+              >
+                Services
+              </a>
+              <a 
                 href="/service-request" 
                 className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
                 style={{
