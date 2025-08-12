@@ -3,34 +3,36 @@ import { PrismaClient } from '@prisma/client';
 
 const EMERGENCY_DB_URL = "postgresql://postgres.jevhyocvecfztkyiubeu:Leetim123%21%40%23@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
-// Global prisma instance to avoid "prepared statement already exists" error
-let globalPrisma;
-
 export async function GET() {
+  let freshPrisma = null;
   
   try {
     console.log('🚨 Emergency Test: Starting database test...');
     
-    // Use global prisma instance or create new one
-    if (!globalPrisma) {
-      console.log('🔗 Emergency Test: Creating new Prisma client...');
-      globalPrisma = new PrismaClient({
-        datasources: {
-          db: { url: EMERGENCY_DB_URL }
-        }
-      });
-      await globalPrisma.$connect();
-      console.log('✅ Emergency Test: New Prisma client connected!');
-    } else {
-      console.log('✅ Emergency Test: Using existing Prisma client');
-    }
+    // Create completely fresh Prisma client each time
+    console.log('🔗 Emergency Test: Creating fresh Prisma client...');
+    freshPrisma = new PrismaClient({
+      datasources: {
+        db: { url: EMERGENCY_DB_URL }
+      },
+      // Force new connection each time
+      __internal: {
+        useUds: false
+      }
+    });
+
+    console.log('🔗 Emergency Test: Connecting...');
+    await freshPrisma.$connect();
+    console.log('✅ Emergency Test: Connected!');
 
     // Test user count
-    const userCount = await globalPrisma.user.count();
+    console.log('📊 Emergency Test: Counting users...');
+    const userCount = await freshPrisma.user.count();
     console.log('👥 Emergency Test: User count:', userCount);
 
     // Test admin user
-    const adminUser = await globalPrisma.user.findUnique({
+    console.log('🔍 Emergency Test: Finding admin user...');
+    const adminUser = await freshPrisma.user.findUnique({
       where: { email: 'admin@aistudio7.com' }
     });
     console.log('🔑 Emergency Test: Admin exists:', !!adminUser);
@@ -56,7 +58,15 @@ export async function GET() {
       timestamp: new Date().toISOString()
     }, { status: 500 });
   } finally {
-    // Don't disconnect global prisma to avoid reconnection issues
-    console.log('🔄 Emergency Test: Keeping connection alive for reuse');
+    // Always disconnect fresh connection
+    if (freshPrisma) {
+      try {
+        console.log('🔌 Emergency Test: Disconnecting...');
+        await freshPrisma.$disconnect();
+        console.log('✅ Emergency Test: Disconnected cleanly');
+      } catch (disconnectError) {
+        console.log('⚠️ Emergency Test: Disconnect error (ignored):', disconnectError.message);
+      }
+    }
   }
 }
