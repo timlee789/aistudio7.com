@@ -171,11 +171,11 @@ export default function ServiceRequest() {
       setCheckingPayment(true);
       
       try {
-        const response = await fetch('/api/user/payment-status');
+        const response = await fetch('/api/user/page-access?page=service-request');
         const data = await response.json();
         
         if (response.ok) {
-          setHasPaidService(data.hasPaidService);
+          setHasPaidService(data.hasAccess);
         } else {
           setHasPaidService(false);
         }
