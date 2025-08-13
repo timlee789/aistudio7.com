@@ -13,7 +13,7 @@ const mockStripe = {
         
         return {
           id: sessionId,
-          url: `${process.env.NEXTAUTH_URL}/payment/checkout?session_id=${sessionId}&amount=${options.line_items[0].price_data.unit_amount / 100}&service=${encodeURIComponent(options.metadata.serviceName)}&type=${options.metadata.serviceType}`
+          url: `https://www.aistudio7.com/payment/checkout?session_id=${sessionId}&amount=${options.line_items[0].price_data.unit_amount / 100}&service=${encodeURIComponent(options.metadata.serviceName)}&type=${options.metadata.serviceType}`
         };
       }
     }
@@ -96,8 +96,8 @@ export async function POST(request) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXTAUTH_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/services`,
+      success_url: `https://www.aistudio7.com/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://www.aistudio7.com/services`,
       metadata: {
         paymentId: payment.id,
         serviceName: serviceName,
