@@ -1,18 +1,35 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma-new';
+import { Client } from 'pg';
 import jwt from 'jsonwebtoken';
 import { uploadFile } from '@/lib/supabase';
+import { createId } from '@paralleldrive/cuid2';
 
 export async function GET() {
-  try {
-    const banner = await prisma.mainBanner.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' }
-    });
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
 
+  try {
+    await client.connect();
+    
+    const result = await client.query(
+      'SELECT * FROM main_banners WHERE "isActive" = true ORDER BY "createdAt" DESC LIMIT 1'
+    );
+    
+    await client.end();
+
+    const banner = result.rows[0] || null;
     return NextResponse.json({ banner });
   } catch (error) {
     console.error('Banner fetch error:', error);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch banner' },
       { status: 500 }
@@ -21,6 +38,11 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     // Check authentication
     const token = request.cookies.get('token')?.value;
@@ -78,8 +100,8 @@ export async function POST(request) {
       );
     }
 
-    // Upload file to Supabase Storage
-    const uploadResult = await uploadFile(file, 'uploads', 'banners');
+    // Upload file to Supabase Storage with admin privileges
+    const uploadResult = await uploadFile(file, 'uploads', 'banners', true);
     
     if (!uploadResult.success) {
       return NextResponse.json(
@@ -88,35 +110,45 @@ export async function POST(request) {
       );
     }
 
+    await client.connect();
+
     // Deactivate existing banners
-    await prisma.mainBanner.updateMany({
-      where: { isActive: true },
-      data: { isActive: false }
-    });
+    await client.query(
+      'UPDATE main_banners SET "isActive" = false, "updatedAt" = NOW() WHERE "isActive" = true'
+    );
 
     // Save banner info to database
-    const banner = await prisma.mainBanner.create({
-      data: {
-        title,
-        description,
-        filename: uploadResult.filename,
-        originalName: uploadResult.originalName,
-        mimetype: uploadResult.mimetype,
-        size: uploadResult.size,
-        path: uploadResult.url,
-        isActive: true
-      }
-    });
+    const bannerId = createId();
+    const insertResult = await client.query(`
+      INSERT INTO main_banners (
+        id, title, description, filename, "originalName", mimetype, 
+        size, path, "isActive", "createdAt", "updatedAt"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      RETURNING *
+    `, [
+      bannerId, title, description, uploadResult.filename,
+      uploadResult.originalName, uploadResult.mimetype,
+      uploadResult.size, uploadResult.url, true
+    ]);
+
+    await client.end();
 
     return NextResponse.json({
       message: 'Banner uploaded successfully',
-      banner
+      banner: insertResult.rows[0]
     });
 
   } catch (error) {
     console.error('Banner upload error:', error);
     console.error('Error details:', error.message);
     console.error('Error stack:', error.stack);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to upload banner', details: error.message },
       { status: 500 }
@@ -125,6 +157,11 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     // Check authentication
     const token = request.cookies.get('token')?.value;
@@ -163,30 +200,38 @@ export async function DELETE(request) {
       );
     }
 
-    // Find and delete banner
-    const banner = await prisma.mainBanner.findUnique({
-      where: { id: bannerId }
-    });
+    await client.connect();
 
-    if (!banner) {
+    // Find banner first
+    const bannerResult = await client.query(
+      'SELECT * FROM main_banners WHERE id = $1',
+      [bannerId]
+    );
+
+    if (bannerResult.rows.length === 0) {
+      await client.end();
       return NextResponse.json(
         { error: 'Banner not found' },
         { status: 404 }
       );
     }
 
-    // Delete from database
-    await prisma.mainBanner.delete({
-      where: { id: bannerId }
-    });
+    const banner = bannerResult.rows[0];
 
-    // Delete physical file
+    // Delete from database
+    await client.query('DELETE FROM main_banners WHERE id = $1', [bannerId]);
+    
+    await client.end();
+
+    // Delete physical file (if stored locally)
     try {
       const fs = require('fs').promises;
+      const { join } = require('path');
       const filepath = join(process.cwd(), 'public', 'uploads', banner.filename);
       await fs.unlink(filepath);
     } catch (fileError) {
       // Continue even if file deletion fails
+      console.log('Local file deletion skipped or failed:', fileError.message);
     }
 
     return NextResponse.json({
@@ -195,6 +240,13 @@ export async function DELETE(request) {
 
   } catch (error) {
     console.error('Banner deletion error:', error);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to delete banner' },
       { status: 500 }
