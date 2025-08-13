@@ -98,7 +98,7 @@ export async function POST(request) {
     let sessionConfig;
     
     if (embedded && stripeClient !== mockStripe) {
-      // Embedded checkout configuration
+      // Embedded checkout configuration - use different approach
       sessionConfig = {
         payment_method_types: ['card'],
         line_items: [
@@ -116,7 +116,7 @@ export async function POST(request) {
         ],
         mode: 'payment',
         ui_mode: 'embedded',
-        return_url: `https://www.aistudio7.com/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        redirect_on_completion: 'never',
         metadata: {
           paymentId: payment.id,
           serviceName: serviceName,
@@ -178,6 +178,9 @@ export async function POST(request) {
 
     // Add client_secret for embedded checkout only
     if (embedded && stripeClient !== mockStripe && session.client_secret) {
+      // Log the raw client_secret to debug
+      console.log('Raw client_secret from Stripe:', session.client_secret.substring(0, 50) + '...');
+      console.log('Client_secret length:', session.client_secret.length);
       response.clientSecret = session.client_secret;
     } else {
       // For regular checkout, provide the URL

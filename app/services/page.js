@@ -38,20 +38,13 @@ const EmbeddedCheckout = ({ stripe, clientSecret }) => {
     const mountCheckout = async () => {
       try {
         console.log('Attempting to mount embedded checkout with clientSecret:', clientSecret.substring(0, 50) + '...');
+        console.log('ClientSecret length:', clientSecret.length);
+        console.log('ClientSecret contains %:', clientSecret.includes('%'));
+        console.log('ClientSecret contains /:', clientSecret.includes('/'));
         
-        // Try to decode the client_secret if it's URL encoded
-        let processedClientSecret = clientSecret;
-        try {
-          if (clientSecret.includes('%')) {
-            processedClientSecret = decodeURIComponent(clientSecret);
-            console.log('Decoded client_secret length:', processedClientSecret.length);
-          }
-        } catch (decodeError) {
-          console.warn('Failed to decode client_secret, using original:', decodeError);
-        }
-
+        // Use the client_secret as-is from the server
         const elements = stripe.elements({
-          clientSecret: processedClientSecret,
+          clientSecret: clientSecret,
         });
 
         const checkoutElement = elements.create('checkout');
