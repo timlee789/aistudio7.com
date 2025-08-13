@@ -42,7 +42,7 @@ export async function POST(request) {
     await client.connect();
     
     // Generate order number
-    const orderCountResult = await client.query('SELECT COUNT(*) FROM "Order"');
+    const orderCountResult = await client.query('SELECT COUNT(*) FROM orders');
     const orderCount = parseInt(orderCountResult.rows[0].count);
     const orderId = `ORD-${String(orderCount + 1).padStart(3, '0')}`;
 
@@ -112,7 +112,7 @@ export async function POST(request) {
 
     // Create order
     const orderResult = await client.query(`
-      INSERT INTO "Order" (id, "orderId", "clientId", title, description, priority, "dueDate", status, "createdAt", "updatedAt")
+      INSERT INTO orders (id, "orderId", "clientId", title, description, priority, "dueDate", status, "createdAt", "updatedAt")
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       RETURNING *
     `, [
@@ -131,8 +131,8 @@ export async function POST(request) {
     // Create files if any
     for (const fileInfo of fileData) {
       await client.query(`
-        INSERT INTO "File" (id, filename, "originalName", mimetype, size, path, "orderId", "createdAt", "updatedAt")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        INSERT INTO files (id, filename, "originalName", mimetype, size, path, "orderId", "uploadedAt")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       `, [
         fileInfo.id,
         fileInfo.filename,
@@ -152,7 +152,7 @@ export async function POST(request) {
 
     // Get files for response
     const filesResult = await client.query(
-      'SELECT * FROM "File" WHERE "orderId" = $1',
+      'SELECT * FROM files WHERE "orderId" = $1',
       [orderDbId]
     );
 
@@ -213,7 +213,7 @@ export async function GET(request) {
         SELECT 
           o.*,
           u.id as client_id, u.name as client_name, u.email as client_email, u.company as client_company
-        FROM "Order" o
+        FROM orders o
         LEFT JOIN users u ON o."clientId" = u.id
         ORDER BY o."createdAt" DESC
       `;
@@ -223,7 +223,7 @@ export async function GET(request) {
         SELECT 
           o.*,
           u.id as client_id, u.name as client_name, u.email as client_email
-        FROM "Order" o
+        FROM orders o
         LEFT JOIN users u ON o."clientId" = u.id
         WHERE o."clientId" = $1
         ORDER BY o."createdAt" DESC
@@ -238,13 +238,13 @@ export async function GET(request) {
     const ordersWithDetails = await Promise.all(orders.map(async (order) => {
       // Get order files
       const filesResult = await client.query(
-        'SELECT * FROM "File" WHERE "orderId" = $1',
+        'SELECT * FROM files WHERE "orderId" = $1',
         [order.id]
       );
 
       // Get admin content
       const adminContentResult = await client.query(
-        'SELECT * FROM "AdminContent" WHERE "orderId" = $1',
+        'SELECT * FROM admin_contents WHERE "orderId" = $1',
         [order.id]
       );
 
@@ -254,7 +254,7 @@ export async function GET(request) {
         
         // Get admin content files
         const adminFilesResult = await client.query(
-          'SELECT * FROM "AdminFile" WHERE "adminContentId" = $1',
+          'SELECT * FROM files WHERE "adminContentId" = $1',
           [adminContentData.id]
         );
 
@@ -266,7 +266,7 @@ export async function GET(request) {
 
       // Get feedbacks
       const feedbacksResult = await client.query(
-        'SELECT * FROM "Feedback" WHERE "orderId" = $1 ORDER BY "createdAt" DESC',
+        'SELECT * FROM feedbacks WHERE "orderId" = $1 ORDER BY "createdAt" DESC',
         [order.id]
       );
 
