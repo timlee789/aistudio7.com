@@ -42,9 +42,21 @@ const EmbeddedCheckout = ({ stripe, clientSecret }) => {
         console.log('ClientSecret contains %:', clientSecret.includes('%'));
         console.log('ClientSecret contains /:', clientSecret.includes('/'));
         
-        // Use the client_secret as-is from the server
+        // Decode the client_secret if it's URL encoded (which it appears to be)
+        let decodedClientSecret = clientSecret;
+        if (clientSecret.includes('%')) {
+          try {
+            decodedClientSecret = decodeURIComponent(clientSecret);
+            console.log('Successfully decoded client_secret, new length:', decodedClientSecret.length);
+            console.log('Decoded client_secret preview:', decodedClientSecret.substring(0, 50) + '...');
+          } catch (decodeError) {
+            console.error('Failed to decode client_secret:', decodeError);
+            throw new Error('Invalid client_secret format');
+          }
+        }
+        
         const elements = stripe.elements({
-          clientSecret: clientSecret,
+          clientSecret: decodedClientSecret,
         });
 
         const checkoutElement = elements.create('checkout');

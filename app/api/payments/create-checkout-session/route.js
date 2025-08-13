@@ -181,7 +181,12 @@ export async function POST(request) {
       // Log the raw client_secret to debug
       console.log('Raw client_secret from Stripe:', session.client_secret.substring(0, 50) + '...');
       console.log('Client_secret length:', session.client_secret.length);
+      console.log('Client_secret contains %:', session.client_secret.includes('%'));
+      
+      // Important: Do NOT encode the client_secret, pass it as-is
       response.clientSecret = session.client_secret;
+      
+      console.log('Response client_secret preview:', response.clientSecret.substring(0, 50) + '...');
     } else {
       // For regular checkout, provide the URL
       response.url = session.url;
