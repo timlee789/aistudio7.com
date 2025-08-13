@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { Client } from 'pg';
 import { createId } from '@paralleldrive/cuid2';
+import Stripe from 'stripe';
 
-// Mock Stripe integration - In production, you would use actual Stripe
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-12-18.acacia',
+});
+
+// Mock Stripe fallback for development when keys are not set
 const mockStripe = {
   checkout: {
     sessions: {
       create: async (options) => {
-        // Generate a mock session ID
+        console.warn('🚨 Using Mock Stripe - Set STRIPE_SECRET_KEY for real payments');
         const sessionId = `cs_test_${Math.random().toString(36).substr(2, 9)}`;
         
         return {
@@ -19,6 +25,9 @@ const mockStripe = {
     }
   }
 };
+
+// Use real Stripe if secret key is provided, otherwise mock
+const stripeClient = process.env.STRIPE_SECRET_KEY ? stripe : mockStripe;
 
 export async function POST(request) {
   const client = new Client({
@@ -80,7 +89,7 @@ export async function POST(request) {
     const payment = insertResult.rows[0];
 
     // Create Stripe checkout session (using mock for now)
-    const session = await mockStripe.checkout.sessions.create({
+    const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
