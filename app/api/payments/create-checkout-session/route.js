@@ -95,40 +95,73 @@ export async function POST(request) {
 
     
     // Create Stripe checkout session
-    const sessionConfig = {
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: serviceName,
-              description: serviceDetails?.description || `Payment for ${serviceName}`,
-            },
-            unit_amount: Math.round(amount * 100), // Convert to cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: `https://www.aistudio7.com/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://www.aistudio7.com/services`,
-      metadata: {
-        paymentId: payment.id,
-        serviceName: serviceName,
-        serviceType: serviceType,
-      },
-    };
-
-    // Add embedded checkout configuration if requested
+    let sessionConfig;
+    
     if (embedded && stripeClient !== mockStripe) {
-      sessionConfig.ui_mode = 'embedded';
-      sessionConfig.return_url = `https://www.aistudio7.com/payment/success?session_id={CHECKOUT_SESSION_ID}`;
-      delete sessionConfig.success_url;
-      delete sessionConfig.cancel_url;
+      // Embedded checkout configuration
+      sessionConfig = {
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: serviceName,
+                description: serviceDetails?.description || `Payment for ${serviceName}`,
+              },
+              unit_amount: Math.round(amount * 100), // Convert to cents
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        ui_mode: 'embedded',
+        return_url: `https://www.aistudio7.com/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        metadata: {
+          paymentId: payment.id,
+          serviceName: serviceName,
+          serviceType: serviceType,
+        },
+      };
+    } else {
+      // Regular hosted checkout configuration
+      sessionConfig = {
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: serviceName,
+                description: serviceDetails?.description || `Payment for ${serviceName}`,
+              },
+              unit_amount: Math.round(amount * 100), // Convert to cents
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `https://www.aistudio7.com/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `https://www.aistudio7.com/services`,
+        metadata: {
+          paymentId: payment.id,
+          serviceName: serviceName,
+          serviceType: serviceType,
+        },
+      };
     }
 
     const session = await stripeClient.checkout.sessions.create(sessionConfig);
+
+    // Debug logging for embedded checkout
+    if (embedded && stripeClient !== mockStripe) {
+      console.log('Embedded checkout session created:', {
+        id: session.id,
+        ui_mode: session.ui_mode,
+        client_secret: session.client_secret ? 'Present' : 'Missing',
+        client_secret_length: session.client_secret ? session.client_secret.length : 0
+      });
+    }
 
     // Update payment with Stripe session ID
     await client.query(
@@ -141,12 +174,14 @@ export async function POST(request) {
     const response = {
       success: true,
       sessionId: session.id,
-      url: session.url
     };
 
-    // Add client_secret for embedded checkout
-    if (embedded && session.client_secret) {
+    // Add client_secret for embedded checkout only
+    if (embedded && stripeClient !== mockStripe && session.client_secret) {
       response.clientSecret = session.client_secret;
+    } else {
+      // For regular checkout, provide the URL
+      response.url = session.url;
     }
 
     return NextResponse.json(response);
