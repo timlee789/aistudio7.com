@@ -3,12 +3,35 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Load Stripe.js
+const loadStripe = async () => {
+  if (typeof window !== 'undefined' && !window.Stripe) {
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/';
+    script.async = true;
+    document.head.appendChild(script);
+    
+    return new Promise((resolve) => {
+      script.onload = () => {
+        const stripe = window.Stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+        resolve(stripe);
+      };
+    });
+  } else if (window.Stripe) {
+    return window.Stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  }
+  return null;
+};
+
 export default function Services() {
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [processing, setProcessing] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [currentPlan, setCurrentPlan] = useState(null);
 
 
 
@@ -45,12 +68,10 @@ export default function Services() {
       const data = await response.json();
       
       if (data.success) {
-        // Redirect to payment session
-        try {
-          window.open(data.url, '_self');
-        } catch (error) {
-          window.location.href = data.url;
-        }
+        // Show payment in modal instead of redirecting
+        setPaymentUrl(data.url);
+        setCurrentPlan({ serviceType, serviceName, amount });
+        setShowPaymentModal(true);
       } else {
         if (response.status === 401) {
           alert('Session expired. Please login again.');
@@ -985,6 +1006,100 @@ export default function Services() {
           </div>
         </div>
       </main>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/5 xl:w-1/2 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-medium text-gray-900">
+                  Complete Payment - {currentPlan?.serviceName}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setProcessing(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-medium">Service:</span>
+                  <span className="text-gray-900">{currentPlan?.serviceName}</span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-gray-700 font-medium">Amount:</span>
+                  <span className="text-2xl font-bold text-purple-600">${currentPlan?.amount}</span>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <span className="text-blue-600 text-lg">🔒</span>
+                    </div>
+                    <div className="ml-3">
+                      <h4 className="text-sm font-medium text-blue-800">Secure Payment</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Your payment is processed securely by Stripe. We never store your card information.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    // Redirect to Stripe in the same window
+                    window.location.href = paymentUrl;
+                  }}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg"
+                  disabled={processing}
+                >
+                  {processing ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    'Continue to Payment'
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => {
+                    // Open in new window/tab
+                    window.open(paymentUrl, '_blank');
+                  }}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg"
+                  disabled={processing}
+                >
+                  Open in New Tab
+                </button>
+              </div>
+
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setProcessing(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-sm underline"
+                >
+                  Cancel and go back
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
