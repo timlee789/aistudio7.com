@@ -141,7 +141,7 @@ export default function Services() {
           serviceName,
           amount,
           serviceDetails,
-          embedded: true // Request embedded checkout
+          embedded: false // Temporarily disable embedded checkout - use regular checkout that works
         }),
       });
 
@@ -1147,17 +1147,9 @@ export default function Services() {
                 </div>
               </div>
 
-              {/* Embedded Stripe Checkout */}
-              {clientSecret && stripeInstance ? (
-                <div id="checkout">
-                  <EmbeddedCheckout 
-                    stripe={stripeInstance} 
-                    clientSecret={clientSecret}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <div className="flex space-x-4">
+              {/* Regular Stripe Checkout - Embedded temporarily disabled */}
+              <div>
+                <div className="flex space-x-4">
                     <button
                       onClick={() => {
                         // Redirect to Stripe in the same window
@@ -1188,7 +1180,6 @@ export default function Services() {
                     </button>
                   </div>
                 </div>
-              )}
 
               <div className="mt-4 text-center">
                 <button
