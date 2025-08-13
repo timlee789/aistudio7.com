@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma-new';
+import { Client } from 'pg';
 
 // Extract user information from token
 function getUserFromToken(request) {
@@ -16,6 +16,11 @@ function getUserFromToken(request) {
 }
 
 export async function GET(request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     // Check authentication and admin role
     const user = getUserFromToken(request);
@@ -26,12 +31,16 @@ export async function GET(request) {
       );
     }
 
-    // Verify admin role
-    const userRecord = await prisma.user.findUnique({
-      where: { id: user.userId }
-    });
+    await client.connect();
 
-    if (!userRecord || userRecord.role !== 'ADMIN') {
+    // Verify admin role
+    const userResult = await client.query(
+      'SELECT role FROM users WHERE id = $1',
+      [user.userId]
+    );
+
+    if (userResult.rows.length === 0 || userResult.rows[0].role !== 'ADMIN') {
+      await client.end();
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -39,34 +48,29 @@ export async function GET(request) {
     }
 
     // Get all payments with user information
-    const payments = await prisma.payment.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            company: true,
-            phone: true,
-            createdAt: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const paymentsResult = await client.query(`
+      SELECT 
+        p.*,
+        u.id as user_id, u.name, u.email, u.company, u.phone, u."createdAt" as user_created_at
+      FROM payments p
+      LEFT JOIN users u ON p."userId" = u.id
+      ORDER BY p."createdAt" DESC
+    `);
+
+    const payments = paymentsResult.rows;
 
     // Calculate statistics
     const stats = {
       totalPayments: payments.length,
       totalAmount: payments
         .filter(p => p.status === 'COMPLETED')
-        .reduce((sum, p) => sum + p.amount, 0),
+        .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0),
       pendingPayments: payments.filter(p => p.status === 'PENDING').length,
       completedPayments: payments.filter(p => p.status === 'COMPLETED').length,
       failedPayments: payments.filter(p => p.status === 'FAILED').length,
     };
+
+    await client.end();
 
     return NextResponse.json({
       payments: payments,
@@ -75,6 +79,13 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Admin Payments API error:', error);
+    try {
+      if (client._connected) {
+        await client.end();
+      }
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
     return NextResponse.json(
       { error: 'Server error occurred' },
       { status: 500 }
