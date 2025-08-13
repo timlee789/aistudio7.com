@@ -9,9 +9,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // Optimize for Vercel serverless functions
-  experimental: {
-    serverComponentsExternalPackages: ['pg'],
-  },
+  serverExternalPackages: ['pg'],
 };
 
 export default nextConfig;
