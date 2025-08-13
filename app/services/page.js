@@ -37,8 +37,21 @@ const EmbeddedCheckout = ({ stripe, clientSecret }) => {
 
     const mountCheckout = async () => {
       try {
+        console.log('Attempting to mount embedded checkout with clientSecret:', clientSecret.substring(0, 50) + '...');
+        
+        // Try to decode the client_secret if it's URL encoded
+        let processedClientSecret = clientSecret;
+        try {
+          if (clientSecret.includes('%')) {
+            processedClientSecret = decodeURIComponent(clientSecret);
+            console.log('Decoded client_secret length:', processedClientSecret.length);
+          }
+        } catch (decodeError) {
+          console.warn('Failed to decode client_secret, using original:', decodeError);
+        }
+
         const elements = stripe.elements({
-          clientSecret: clientSecret,
+          clientSecret: processedClientSecret,
         });
 
         const checkoutElement = elements.create('checkout');
@@ -46,6 +59,7 @@ const EmbeddedCheckout = ({ stripe, clientSecret }) => {
         
         setMounted(true);
         setError(null);
+        console.log('Embedded checkout mounted successfully');
       } catch (err) {
         console.error('Stripe embedded checkout error:', err);
         setError('Failed to load payment form. Please try the regular checkout option.');
@@ -133,11 +147,13 @@ export default function Services() {
         setCurrentPlan({ serviceType, serviceName, amount });
         
         // Only initialize embedded checkout if we have a valid client_secret
-        if (data.clientSecret && data.clientSecret.includes('_secret_')) {
+        if (data.clientSecret && data.clientSecret.startsWith('cs_') && data.clientSecret.includes('_secret_')) {
+          console.log('Initializing embedded checkout with client_secret length:', data.clientSecret.length);
           const stripe = await loadStripe();
           setStripeInstance(stripe);
           setClientSecret(data.clientSecret);
         } else {
+          console.log('No valid client_secret, falling back to regular checkout');
           // Clear embedded checkout data for fallback
           setStripeInstance(null);
           setClientSecret('');
