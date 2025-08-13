@@ -53,9 +53,13 @@ export async function POST(request) {
     // Process regular files
     while (formData.get(`file${i}`)) {
       const file = formData.get(`file${i}`);
+      console.log(`🔍 Processing file ${i}:`, { name: file.name, size: file.size, type: file.type });
+      
       if (file && file.size > 0) {
         try {
+          console.log(`📤 Uploading file to Supabase: ${file.name}`);
           const uploadResult = await uploadFile(file, 'uploads', 'orders', true);
+          console.log(`📤 Upload result:`, uploadResult);
           
           if (!uploadResult.success) {
             throw new Error(uploadResult.error);
