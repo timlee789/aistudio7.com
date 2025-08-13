@@ -168,6 +168,14 @@ export default function ServiceRequest() {
         return;
       }
       
+      // TEMPORARY: Skip payment check for testing
+      console.log('🧪 TESTING MODE: Payment check bypassed for Service Request');
+      setHasPaidService(true); // Always allow access for testing
+      setCheckingPayment(false);
+      return;
+      
+      // Original payment check code (commented out for testing)
+      /*
       try {
         const response = await fetch('/api/user/payment-status');
         const data = await response.json();
@@ -178,6 +186,7 @@ export default function ServiceRequest() {
       } finally {
         setCheckingPayment(false);
       }
+      */
     };
 
     checkPaymentStatus();
