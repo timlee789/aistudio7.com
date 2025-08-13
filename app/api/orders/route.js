@@ -57,28 +57,48 @@ export async function POST(request) {
       
       if (file && file.size > 0) {
         try {
-          console.log(`📤 Uploading file to Supabase: ${file.name}`);
+          console.log(`📤 Attempting Supabase upload for: ${file.name}`);
           const uploadResult = await uploadFile(file, 'uploads', 'orders', true);
           console.log(`📤 Upload result:`, uploadResult);
           
-          if (!uploadResult.success) {
-            throw new Error(uploadResult.error);
+          let fileInfo;
+          
+          if (uploadResult.success) {
+            // Use Supabase URL if upload succeeded
+            fileInfo = {
+              id: createId(),
+              filename: uploadResult.filename,
+              originalName: uploadResult.originalName,
+              mimetype: uploadResult.mimetype,
+              size: uploadResult.size,
+              path: uploadResult.url
+            };
+            console.log(`✅ Supabase upload successful for: ${file.name}`);
+          } else {
+            // Fallback: convert to base64 and store in database
+            console.log(`⚠️ Supabase upload failed, using base64 fallback for: ${file.name}`);
+            const buffer = await file.arrayBuffer();
+            const base64 = Buffer.from(buffer).toString('base64');
+            const dataUrl = `data:${file.type};base64,${base64}`;
+            
+            fileInfo = {
+              id: createId(),
+              filename: `fallback_${Date.now()}_${file.name}`,
+              originalName: file.name,
+              mimetype: file.type,
+              size: file.size,
+              path: dataUrl // Store as data URL
+            };
+            console.log(`📝 Using base64 fallback for: ${file.name} (${(base64.length / 1024).toFixed(1)}KB)`);
           }
           
-          fileData.push({
-            id: createId(),
-            filename: uploadResult.filename,
-            originalName: uploadResult.originalName,
-            mimetype: uploadResult.mimetype,
-            size: uploadResult.size,
-            path: uploadResult.url
-          });
+          fileData.push(fileInfo);
         } catch (uploadError) {
-          console.error('File upload error:', uploadError);
+          console.error('File processing error:', uploadError);
           console.error('File details:', { name: file.name, size: file.size, type: file.type });
           await client.end();
           return NextResponse.json(
-            { error: `File upload failed: ${file.name} - ${uploadError.message || uploadError}` },
+            { error: `File processing failed: ${file.name} - ${uploadError.message || uploadError}` },
             { status: 500 }
           );
         }
