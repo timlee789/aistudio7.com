@@ -5,6 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // Load Stripe.js
 const loadStripe = async () => {
+  // For now, we'll fallback to regular checkout if embedded fails
+  // The NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY environment variable needs to be set in Vercel
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder';
+  
   if (typeof window !== 'undefined' && !window.Stripe) {
     const script = document.createElement('script');
     script.src = 'https://js.stripe.com/v3/';
@@ -13,14 +17,46 @@ const loadStripe = async () => {
     
     return new Promise((resolve) => {
       script.onload = () => {
-        const stripe = window.Stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+        const stripe = window.Stripe(publishableKey);
         resolve(stripe);
       };
     });
   } else if (window.Stripe) {
-    return window.Stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+    return window.Stripe(publishableKey);
   }
   return null;
+};
+
+// Embedded Checkout Component
+const EmbeddedCheckout = ({ stripe, clientSecret }) => {
+  const [checkoutElement, setCheckoutElement] = useState(null);
+
+  useEffect(() => {
+    if (!stripe || !clientSecret) return;
+
+    const elements = stripe.elements({
+      clientSecret: clientSecret,
+    });
+
+    const checkoutElement = elements.create('checkout');
+    checkoutElement.mount('#checkout-element');
+    
+    setCheckoutElement(checkoutElement);
+
+    return () => {
+      if (checkoutElement) {
+        checkoutElement.unmount();
+      }
+    };
+  }, [stripe, clientSecret]);
+
+  return (
+    <div className="w-full">
+      <div id="checkout-element" className="min-h-[400px]">
+        {/* Stripe Checkout will be mounted here */}
+      </div>
+    </div>
+  );
 };
 
 export default function Services() {
@@ -32,6 +68,8 @@ export default function Services() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [clientSecret, setClientSecret] = useState('');
+  const [stripeInstance, setStripeInstance] = useState(null);
 
 
 
@@ -61,15 +99,19 @@ export default function Services() {
           serviceType,
           serviceName,
           amount,
-          serviceDetails
+          serviceDetails,
+          embedded: true // Request embedded checkout
         }),
       });
 
       const data = await response.json();
       
       if (data.success) {
-        // Show payment in modal instead of redirecting
+        // Initialize Stripe and show embedded checkout
+        const stripe = await loadStripe();
+        setStripeInstance(stripe);
         setPaymentUrl(data.url);
+        setClientSecret(data.clientSecret || '');
         setCurrentPlan({ serviceType, serviceName, amount });
         setShowPaymentModal(true);
       } else {
@@ -1054,36 +1096,48 @@ export default function Services() {
                 </div>
               </div>
 
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => {
-                    // Redirect to Stripe in the same window
-                    window.location.href = paymentUrl;
-                  }}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg"
-                  disabled={processing}
-                >
-                  {processing ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </div>
-                  ) : (
-                    'Continue to Payment'
-                  )}
-                </button>
-                
-                <button
-                  onClick={() => {
-                    // Open in new window/tab
-                    window.open(paymentUrl, '_blank');
-                  }}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg"
-                  disabled={processing}
-                >
-                  Open in New Tab
-                </button>
-              </div>
+              {/* Embedded Stripe Checkout */}
+              {clientSecret && stripeInstance ? (
+                <div id="checkout">
+                  <EmbeddedCheckout 
+                    stripe={stripeInstance} 
+                    clientSecret={clientSecret}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => {
+                        // Redirect to Stripe in the same window
+                        window.location.href = paymentUrl;
+                      }}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg"
+                      disabled={processing}
+                    >
+                      {processing ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        'Continue to Payment'
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        // Open in new window/tab
+                        window.open(paymentUrl, '_blank');
+                      }}
+                      className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg"
+                      disabled={processing}
+                    >
+                      Open in New Tab
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 text-center">
                 <button

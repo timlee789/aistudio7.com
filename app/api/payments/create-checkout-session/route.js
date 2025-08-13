@@ -59,7 +59,7 @@ export async function POST(request) {
     }
     
     const body = await request.json();
-    const { serviceType, serviceName, amount, serviceDetails } = body;
+    const { serviceType, serviceName, amount, serviceDetails, embedded } = body;
 
     if (!serviceType || !serviceName || !amount) {
       return NextResponse.json(
@@ -90,8 +90,9 @@ export async function POST(request) {
 
     const payment = insertResult.rows[0];
 
-    // Create Stripe checkout session (using mock for now)
-    const session = await stripeClient.checkout.sessions.create({
+    
+    // Create Stripe checkout session
+    const sessionConfig = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -114,7 +115,17 @@ export async function POST(request) {
         serviceName: serviceName,
         serviceType: serviceType,
       },
-    });
+    };
+
+    // Add embedded checkout configuration if requested
+    if (embedded && stripeClient !== mockStripe) {
+      sessionConfig.ui_mode = 'embedded';
+      sessionConfig.return_url = `https://www.aistudio7.com/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+      delete sessionConfig.success_url;
+      delete sessionConfig.cancel_url;
+    }
+
+    const session = await stripeClient.checkout.sessions.create(sessionConfig);
 
     // Update payment with Stripe session ID
     await client.query(
@@ -124,11 +135,18 @@ export async function POST(request) {
 
     await client.end();
 
-    return NextResponse.json({
+    const response = {
       success: true,
       sessionId: session.id,
       url: session.url
-    });
+    };
+
+    // Add client_secret for embedded checkout
+    if (embedded && session.client_secret) {
+      response.clientSecret = session.client_secret;
+    }
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Payment Creation Error:', error.message);
