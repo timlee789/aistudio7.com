@@ -18,6 +18,19 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    // 파일 업로드 크기 제한 증가
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+  // API 라우트 설정
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+    responseLimit: false,
+  },
 }
 
 module.exports = nextConfig

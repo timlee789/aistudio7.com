@@ -20,10 +20,23 @@ export function OrderProvider({ children }) {
         formData.append('dueDate', orderData.dueDate);
       }
       
-      // 파일들 추가
-      orderData.files.forEach((file, index) => {
-        formData.append(`file${index}`, file);
-      });
+      // 파일들 추가 - AI 생성 이미지와 일반 파일을 다르게 처리
+      let fileIndex = 0;
+      for (const file of orderData.files) {
+        if (file.isGenerated) {
+          // AI 생성 이미지의 경우 URL을 메타데이터로 전송
+          formData.append(`generatedFile${fileIndex}`, JSON.stringify({
+            name: file.name,
+            url: file.url,
+            type: file.type,
+            isGenerated: true
+          }));
+        } else {
+          // 일반 파일의 경우 직접 추가
+          formData.append(`file${fileIndex}`, file);
+        }
+        fileIndex++;
+      }
 
       const response = await fetch('/api/orders', {
         method: 'POST',
