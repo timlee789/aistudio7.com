@@ -16,6 +16,11 @@ function getUserFromToken(request) {
 }
 
 export async function POST(request) {
+  // Disable in production for security
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Test endpoints disabled in production' }, { status: 503 });
+  }
+
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
@@ -73,6 +78,11 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  // Disable in production for security
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Test endpoints disabled in production' }, { status: 503 });
+  }
+
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false

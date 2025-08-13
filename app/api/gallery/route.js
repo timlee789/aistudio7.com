@@ -80,18 +80,9 @@ export async function POST(request) {
     }
 
     // File upload processing with Supabase Storage using admin privileges
-    console.log('🔍 Starting file upload with admin privileges');
-    console.log('📁 File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type
-    });
     
     const uploadResult = await uploadFile(file, 'uploads', 'gallery', true);
     
-    console.log('📊 Upload result:', {
-      success: uploadResult.success,
-      error: uploadResult.error,
       path: uploadResult.path
     });
     

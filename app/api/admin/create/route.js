@@ -11,8 +11,9 @@ export async function POST(request) {
   try {
     const { adminKey } = await request.json();
 
-    // 간단한 보안 키 확인
-    if (adminKey !== 'create-admin-2024') {
+    // 보안 키 확인 - 프로덕션에서는 환경변수 사용
+    const validAdminKey = process.env.ADMIN_SETUP_KEY || 'create-admin-2024';
+    if (adminKey !== validAdminKey) {
       return NextResponse.json({ error: 'Invalid admin key' }, { status: 403 });
     }
 

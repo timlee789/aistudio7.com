@@ -124,12 +124,10 @@ export default function AdminDashboard() {
 
   const loadPayments = async () => {
     try {
-      console.log('🏦 Loading payments...');
       const response = await fetch('/api/admin/payments');
       const data = await response.json();
       
       if (response.ok) {
-        console.log('✅ Payments loaded:', data.payments.length);
         setPayments(data.payments);
         setPaymentStats(data.stats);
       } else {
@@ -294,12 +292,10 @@ export default function AdminDashboard() {
   const loadCustomerDetails = async (customer) => {
     setLoadingCustomerDetails(true);
     try {
-      console.log('👤 Loading customer details for:', customer.email);
       const response = await fetch(`/api/admin/user-payments/${customer.id}`);
       const data = await response.json();
       
       if (response.ok) {
-        console.log('✅ Customer details loaded:', data.user);
         setSelectedCustomerDetails(data.user);
       } else {
         console.error('Failed to load customer details:', data.error);
