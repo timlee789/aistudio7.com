@@ -12,7 +12,7 @@ export default function ClientPortal() {
   const [checkingPayment, setCheckingPayment] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  const { user, logout } = useAuth();
+  const { user, logout, loading: userLoading } = useAuth();
   const pathname = usePathname();
   const { orders, fetchOrders, updateOrder } = useOrder();
 
@@ -34,6 +34,8 @@ export default function ClientPortal() {
         return;
       }
       
+      setCheckingPayment(true);
+      
       try {
         const response = await fetch('/api/user/payment-status');
         const data = await response.json();
@@ -46,8 +48,16 @@ export default function ClientPortal() {
       }
     };
 
-    checkPaymentStatus();
-  }, [user]);
+    // Only check payment status if user loading is complete
+    if (!userLoading) {
+      if (user) {
+        checkPaymentStatus();
+      } else {
+        setHasPaidService(false);
+        setCheckingPayment(false);
+      }
+    }
+  }, [user, userLoading]);
 
   useEffect(() => {
     if (user && hasPaidService) {
@@ -351,7 +361,7 @@ export default function ClientPortal() {
           <p className="text-gray-600">Track and manage your order status and progress</p>
         </div>
 
-        {checkingPayment ? (
+        {(userLoading || checkingPayment) ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Checking payment status...</p>

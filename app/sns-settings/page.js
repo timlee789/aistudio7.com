@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SnsSettings() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: userLoading } = useAuth();
   const pathname = usePathname();
   const [hasPaidService, setHasPaidService] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(true);
@@ -65,6 +65,8 @@ export default function SnsSettings() {
         return;
       }
       
+      setCheckingPayment(true);
+      
       // Check payment status
       try {
         const response = await fetch('/api/user/payment-status');
@@ -78,8 +80,16 @@ export default function SnsSettings() {
       }
     };
 
-    checkPaymentStatus();
-  }, [user]);
+    // Only check payment status if user loading is complete
+    if (!userLoading) {
+      if (user) {
+        checkPaymentStatus();
+      } else {
+        setHasPaidService(false);
+        setCheckingPayment(false);
+      }
+    }
+  }, [user, userLoading]);
 
   // Load SNS settings
   useEffect(() => {
@@ -423,7 +433,7 @@ export default function SnsSettings() {
           <p className="text-gray-600">Manage social media platform connections and auto-posting settings</p>
         </div>
 
-        {checkingPayment ? (
+        {(userLoading || checkingPayment) ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Checking payment status...</p>

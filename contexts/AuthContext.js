@@ -7,40 +7,33 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 사용자 프로필 로드 - 더 간단하게
+  // 사용자 프로필 로드
   const loadUser = async () => {
-    console.log('🔄 AuthContext: Starting loadUser...');
     try {
       const response = await fetch('/api/user/profile', {
         method: 'GET',
-        credentials: 'include', // 쿠키 포함
+        credentials: 'include',
         headers: {
           'Cache-Control': 'no-cache',
         },
       });
       
-      console.log('📡 AuthContext: Profile API response status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ AuthContext: User data loaded:', data.user);
         setUser(data.user);
       } else {
-        console.log('❌ AuthContext: Profile API failed, setting user to null');
         setUser(null);
       }
     } catch (error) {
-      console.error('💥 AuthContext: User loading error:', error);
+      console.error('User loading error:', error);
       setUser(null);
     } finally {
-      console.log('🏁 AuthContext: Setting loading to false');
       setLoading(false);
     }
   };
 
-  // Login - 더 간단하게
+  // Login
   const login = async (email, password) => {
-    console.log('🔐 AuthContext: Starting login for email:', email);
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -51,20 +44,16 @@ export function AuthProvider({ children }) {
         credentials: 'include', // 쿠키 포함
       });
 
-      console.log('📡 AuthContext: Login API response status:', response.status);
       const data = await response.json();
-      console.log('📊 AuthContext: Login API response data:', data);
 
       if (response.ok) {
-        console.log('✅ AuthContext: Login successful, setting user:', data.user);
         setUser(data.user);
         return { success: true, message: data.message, user: data.user };
       } else {
-        console.log('❌ AuthContext: Login failed:', data.error);
         return { success: false, error: data.error };
       }
     } catch (error) {
-      console.error('💥 AuthContext: Login error:', error);
+      console.error('Login error:', error);
       return { success: false, error: 'A network error occurred' };
     }
   };

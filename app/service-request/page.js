@@ -27,7 +27,7 @@ export default function ServiceRequest() {
   
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, loading: userLoading } = useAuth();
   const { createOrder } = useOrder();
 
   const handleFileUpload = (e) => {
@@ -168,6 +168,8 @@ export default function ServiceRequest() {
         return;
       }
       
+      setCheckingPayment(true);
+      
       try {
         const response = await fetch('/api/user/payment-status');
         const data = await response.json();
@@ -180,8 +182,16 @@ export default function ServiceRequest() {
       }
     };
 
-    checkPaymentStatus();
-  }, [user]);
+    // Only check payment status if user loading is complete
+    if (!userLoading) {
+      if (user) {
+        checkPaymentStatus();
+      } else {
+        setHasPaidService(false);
+        setCheckingPayment(false);
+      }
+    }
+  }, [user, userLoading]);
 
   // Clean up object URLs when component unmounts
   useEffect(() => {
@@ -438,7 +448,7 @@ export default function ServiceRequest() {
         <div className="bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-8">Service Request</h2>
           
-          {checkingPayment ? (
+          {(userLoading || checkingPayment) ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
               <p className="mt-4 text-gray-600">Checking payment status...</p>
