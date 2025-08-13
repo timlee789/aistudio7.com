@@ -20,7 +20,7 @@ export default function AdminDashboard() {
   });
   
   // Gallery management state
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'payments', 'gallery', or 'banner'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'payments', 'gallery', 'banner', or 'payment-settings'
   const [galleryItems, setGalleryItems] = useState([]);
   const [showGalleryUpload, setShowGalleryUpload] = useState(false);
   const [galleryUploadFile, setGalleryUploadFile] = useState(null);
@@ -47,6 +47,14 @@ export default function AdminDashboard() {
   });
   const [paymentFilter, setPaymentFilter] = useState('ALL'); // ALL, PENDING, COMPLETED, FAILED
   const [selectedPayment, setSelectedPayment] = useState(null);
+
+  // Payment Settings state
+  const [paymentSettings, setPaymentSettings] = useState({
+    clientPortal: true,
+    serviceRequest: true,
+    snsSettings: true
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
   
   // Customer details with payments state
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState(null);
@@ -81,6 +89,8 @@ export default function AdminDashboard() {
       loadGalleryItems();
     } else if (activeTab === 'banner') {
       loadBannerData();
+    } else if (activeTab === 'payment-settings') {
+      loadPaymentSettings();
     }
   }, [user, authLoading, router, activeTab]);
 
@@ -500,6 +510,58 @@ export default function AdminDashboard() {
     }
   };
 
+  // Payment Settings Functions
+  const loadPaymentSettings = async () => {
+    try {
+      const response = await fetch('/api/admin/payment-settings');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setPaymentSettings(data.settings);
+      } else {
+        console.error('Failed to load payment settings:', data.error);
+      }
+    } catch (error) {
+      console.error('Payment settings load error:', error);
+    }
+  };
+
+  const updatePaymentSettings = async (newSettings) => {
+    setSettingsLoading(true);
+    
+    try {
+      const response = await fetch('/api/admin/payment-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newSettings),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setPaymentSettings(data.settings);
+        alert('Payment settings updated successfully!');
+      } else {
+        alert('Update failed: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Payment settings update error:', error);
+      alert('A network error occurred.');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleSettingToggle = (setting) => {
+    const newSettings = {
+      ...paymentSettings,
+      [setting]: !paymentSettings[setting]
+    };
+    updatePaymentSettings(newSettings);
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#f4d03f' }}>
@@ -678,6 +740,16 @@ export default function AdminDashboard() {
                 }`}
               >
                 Banner Management
+              </button>
+              <button
+                onClick={() => setActiveTab('payment-settings')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'payment-settings'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Payment Settings
               </button>
             </nav>
           </div>
@@ -2084,6 +2156,140 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'payment-settings' && (
+          <>
+            {/* Payment Settings Header */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Settings</h2>
+              <p className="text-gray-600">
+                Control which pages require payment verification. Toggle these settings for easy testing.
+              </p>
+            </div>
+
+            {/* Payment Settings Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Client Portal Setting */}
+              <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">My Portal</h3>
+                </div>
+                <div className="p-6">
+                  <p className="text-gray-600 mb-4">
+                    Controls whether users need payment to access the client portal and view their orders.
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Payment Required
+                    </span>
+                    <button
+                      onClick={() => handleSettingToggle('clientPortal')}
+                      disabled={settingsLoading}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        paymentSettings.clientPortal ? 'bg-purple-600' : 'bg-gray-200'
+                      } ${settingsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          paymentSettings.clientPortal ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Status: {paymentSettings.clientPortal ? 'ON' : 'OFF'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Service Request Setting */}
+              <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">Service Request</h3>
+                </div>
+                <div className="p-6">
+                  <p className="text-gray-600 mb-4">
+                    Controls whether users need payment to create new service requests and upload files.
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Payment Required
+                    </span>
+                    <button
+                      onClick={() => handleSettingToggle('serviceRequest')}
+                      disabled={settingsLoading}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        paymentSettings.serviceRequest ? 'bg-purple-600' : 'bg-gray-200'
+                      } ${settingsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          paymentSettings.serviceRequest ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Status: {paymentSettings.serviceRequest ? 'ON' : 'OFF'}
+                  </p>
+                </div>
+              </div>
+
+              {/* SNS Settings Setting */}
+              <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">SNS Settings</h3>
+                </div>
+                <div className="p-6">
+                  <p className="text-gray-600 mb-4">
+                    Controls whether users need payment to access SNS auto-posting settings and platform connections.
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Payment Required
+                    </span>
+                    <button
+                      onClick={() => handleSettingToggle('snsSettings')}
+                      disabled={settingsLoading}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        paymentSettings.snsSettings ? 'bg-purple-600' : 'bg-gray-200'
+                      } ${settingsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          paymentSettings.snsSettings ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Status: {paymentSettings.snsSettings ? 'ON' : 'OFF'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Settings Info */}
+            <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <h4 className="text-lg font-semibold text-blue-800 mb-2">💡 Testing Guide</h4>
+              <ul className="text-blue-700 text-sm space-y-1">
+                <li>• <strong>ON</strong>: Users must have completed payment to access the page</li>
+                <li>• <strong>OFF</strong>: All logged-in users can access the page regardless of payment</li>
+                <li>• Changes take effect immediately for all users</li>
+                <li>• Use OFF setting during testing to avoid payment requirements</li>
+              </ul>
+            </div>
+
+            {settingsLoading && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 flex items-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mr-3"></div>
+                  <span className="text-gray-700">Updating settings...</span>
                 </div>
               </div>
             )}
