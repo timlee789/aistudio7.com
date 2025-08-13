@@ -4,10 +4,12 @@ import { Client } from 'pg';
 import { createId } from '@paralleldrive/cuid2';
 import Stripe from 'stripe';
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia',
-});
+// Initialize Stripe only if secret key is available
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  : null;
 
 // Mock Stripe fallback for development when keys are not set
 const mockStripe = {
@@ -26,8 +28,8 @@ const mockStripe = {
   }
 };
 
-// Use real Stripe if secret key is provided, otherwise mock
-const stripeClient = process.env.STRIPE_SECRET_KEY ? stripe : mockStripe;
+// Use real Stripe if initialized, otherwise mock
+const stripeClient = stripe ? stripe : mockStripe;
 
 export async function POST(request) {
   const client = new Client({

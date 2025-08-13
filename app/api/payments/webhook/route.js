@@ -2,11 +2,22 @@ import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia',
-});
+// Initialize Stripe only if secret key is available
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  : null;
 
 export async function POST(request) {
+  // Check if Stripe is initialized
+  if (!stripe) {
+    return NextResponse.json(
+      { error: 'Stripe not configured - set STRIPE_SECRET_KEY environment variable' },
+      { status: 503 }
+    );
+  }
+
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false

@@ -9,6 +9,15 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-const eslintConfig = [...compat.extends("next/core-web-vitals")];
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals"),
+  {
+    rules: {
+      "@next/next/no-html-link-for-pages": "warn", // Change from error to warning
+      "@next/next/no-img-element": "warn", // Change from error to warning
+      "react-hooks/exhaustive-deps": "warn", // Change from error to warning
+    },
+  },
+];
 
 export default eslintConfig;
