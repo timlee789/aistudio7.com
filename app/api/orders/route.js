@@ -53,13 +53,9 @@ export async function POST(request) {
     // Process regular files
     while (formData.get(`file${i}`)) {
       const file = formData.get(`file${i}`);
-      console.log(`🔍 Processing file ${i}:`, { name: file.name, size: file.size, type: file.type });
-      
       if (file && file.size > 0) {
         try {
-          console.log(`📤 Attempting Supabase upload for: ${file.name}`);
           const uploadResult = await uploadFile(file, 'uploads', 'orders', true);
-          console.log(`📤 Upload result:`, uploadResult);
           
           let fileInfo;
           
@@ -73,10 +69,8 @@ export async function POST(request) {
               size: uploadResult.size,
               path: uploadResult.url
             };
-            console.log(`✅ Supabase upload successful for: ${file.name}`);
           } else {
             // Fallback: convert to base64 and store in database
-            console.log(`⚠️ Supabase upload failed, using base64 fallback for: ${file.name}`);
             const buffer = await file.arrayBuffer();
             const base64 = Buffer.from(buffer).toString('base64');
             const dataUrl = `data:${file.type};base64,${base64}`;
@@ -89,13 +83,11 @@ export async function POST(request) {
               size: file.size,
               path: dataUrl // Store as data URL
             };
-            console.log(`📝 Using base64 fallback for: ${file.name} (${(base64.length / 1024).toFixed(1)}KB)`);
           }
           
           fileData.push(fileInfo);
         } catch (uploadError) {
           console.error('File processing error:', uploadError);
-          console.error('File details:', { name: file.name, size: file.size, type: file.type });
           await client.end();
           return NextResponse.json(
             { error: `File processing failed: ${file.name} - ${uploadError.message || uploadError}` },

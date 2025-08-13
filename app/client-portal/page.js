@@ -34,14 +34,6 @@ export default function ClientPortal() {
         return;
       }
       
-      // TEMPORARY: Skip payment check for testing
-      console.log('🧪 TESTING MODE: Payment check bypassed');
-      setHasPaidService(true); // Always allow access for testing
-      setCheckingPayment(false);
-      return;
-      
-      // Original payment check code (commented out for testing)
-      /*
       try {
         const response = await fetch('/api/user/payment-status');
         const data = await response.json();
@@ -52,7 +44,6 @@ export default function ClientPortal() {
       } finally {
         setCheckingPayment(false);
       }
-      */
     };
 
     checkPaymentStatus();

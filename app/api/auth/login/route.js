@@ -21,31 +21,23 @@ export async function POST(request) {
 
     await client.connect();
 
-    console.log('🔍 Login attempt for email:', email);
-
     // 사용자 찾기 (직접 SQL)
     const userResult = await client.query(
       'SELECT id, name, email, password, role FROM users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
 
-    console.log('📊 User query result count:', userResult.rows.length);
-
     if (userResult.rows.length === 0) {
-      console.log('❌ User not found for email:', email);
       await client.end();
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     const user = userResult.rows[0];
-    console.log('✅ User found:', { id: user.id, email: user.email, role: user.role });
 
     // 비밀번호 확인
     const isValid = await bcrypt.compare(password, user.password);
-    console.log('🔑 Password validation result:', isValid);
     
     if (!isValid) {
-      console.log('❌ Password validation failed for user:', user.email);
       await client.end();
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
