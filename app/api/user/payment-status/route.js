@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma-new';
+import { Client } from 'pg';
 
 function getUserFromToken(request) {
   try {
@@ -15,6 +15,11 @@ function getUserFromToken(request) {
 }
 
 export async function GET(request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     const user = getUserFromToken(request);
     if (!user) {
@@ -24,16 +29,18 @@ export async function GET(request) {
       );
     }
 
+    await client.connect();
+
     // Check if user has any completed payments
-    const completedPayment = await prisma.payment.findFirst({
-      where: {
-        userId: user.userId,
-        status: 'COMPLETED'
-      }
-    });
+    const paymentResult = await client.query(
+      'SELECT id FROM payments WHERE "userId" = $1 AND status = $2 LIMIT 1',
+      [user.userId, 'COMPLETED']
+    );
+
+    await client.end();
 
     return NextResponse.json({
-      hasPaidService: !!completedPayment,
+      hasPaidService: paymentResult.rows.length > 0,
       user: {
         id: user.userId,
         name: user.name,
@@ -43,6 +50,13 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Payment status check error:', error);
+    try {
+      if (client._connected) {
+        await client.end();
+      }
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
     return NextResponse.json(
       { error: 'Server error occurred', hasPaidService: false },
       { status: 500 }
