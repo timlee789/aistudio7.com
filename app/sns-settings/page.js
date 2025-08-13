@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function SnsSettings() {
   const { user, logout, loading: userLoading } = useAuth();
   const pathname = usePathname();
-  const [hasPaidService, setHasPaidService] = useState(false);
+  const [hasPaidService, setHasPaidService] = useState(null);
   const [checkingPayment, setCheckingPayment] = useState(true);
   const [platforms, setPlatforms] = useState([
     {
@@ -71,7 +71,12 @@ export default function SnsSettings() {
       try {
         const response = await fetch('/api/user/payment-status');
         const data = await response.json();
-        setHasPaidService(data.hasPaidService);
+        
+        if (response.ok) {
+          setHasPaidService(data.hasPaidService);
+        } else {
+          setHasPaidService(false);
+        }
       } catch (error) {
         console.error('Failed to check payment status:', error);
         setHasPaidService(false);
@@ -93,7 +98,7 @@ export default function SnsSettings() {
 
   // Load SNS settings
   useEffect(() => {
-    if (user && hasPaidService) {
+    if (user && hasPaidService === true) {
       loadSnsSettings();
     }
   }, [user, hasPaidService]);
@@ -121,7 +126,7 @@ export default function SnsSettings() {
   };
 
   const openConnectionModal = (platform) => {
-    if (!user || !hasPaidService) return;
+    if (!user || hasPaidService !== true) return;
     
     setShowConnectionModal(platform);
     setConnectionForm({
@@ -184,7 +189,7 @@ export default function SnsSettings() {
   };
 
   const toggleAutoPost = (platformId) => {
-    if (!user || !hasPaidService) return;
+    if (!user || hasPaidService !== true) return;
     
     setPlatforms(prev => prev.map(platform => 
       platform.id === platformId 
@@ -194,7 +199,7 @@ export default function SnsSettings() {
   };
 
   const handleSaveSettings = async () => {
-    if (!user || !hasPaidService) return;
+    if (!user || hasPaidService !== true) return;
     
     setLoading(true);
     try {
@@ -224,8 +229,8 @@ export default function SnsSettings() {
     }
   };
 
-  const canUseService = user && hasPaidService;
-  const isDisabled = !user || !hasPaidService;
+  const canUseService = user && hasPaidService === true;
+  const isDisabled = !user || hasPaidService === false;
 
   return (
     <div className="min-h-screen" style={{ background: '#f4d03f' }}>
@@ -449,7 +454,7 @@ export default function SnsSettings() {
               Go to Login
             </button>
           </div>
-        ) : !hasPaidService ? (
+        ) : hasPaidService === false ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
             <h3 className="text-lg font-semibold text-yellow-800 mb-2">Payment Required</h3>
             <p className="text-yellow-700 mb-4">SNS auto-posting settings are only available to users with completed payments. Please purchase a service plan to access this feature.</p>

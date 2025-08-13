@@ -12,7 +12,7 @@ export default function ServiceRequest() {
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [hasPaidService, setHasPaidService] = useState(false);
+  const [hasPaidService, setHasPaidService] = useState(null);
   const [checkingPayment, setCheckingPayment] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -173,7 +173,12 @@ export default function ServiceRequest() {
       try {
         const response = await fetch('/api/user/payment-status');
         const data = await response.json();
-        setHasPaidService(data.hasPaidService);
+        
+        if (response.ok) {
+          setHasPaidService(data.hasPaidService);
+        } else {
+          setHasPaidService(false);
+        }
       } catch (error) {
         console.error('Failed to check payment status:', error);
         setHasPaidService(false);
@@ -213,7 +218,7 @@ export default function ServiceRequest() {
       return;
     }
 
-    if (!hasPaidService) {
+    if (hasPaidService !== true) {
       setError('This service requires a completed payment. Please purchase a service plan to access this feature.');
       return;
     }
@@ -241,8 +246,8 @@ export default function ServiceRequest() {
     setIsSubmitting(false);
   };
 
-  const canUseService = user && hasPaidService;
-  const isDisabled = !user || !hasPaidService;
+  const canUseService = user && hasPaidService === true;
+  const isDisabled = !user || hasPaidService === false;
 
   return (
     <div className="min-h-screen" style={{ background: '#f4d03f' }}>
@@ -464,7 +469,7 @@ export default function ServiceRequest() {
                 Go to Login
               </button>
             </div>
-          ) : !hasPaidService ? (
+          ) : hasPaidService === false ? (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
               <h3 className="text-lg font-semibold text-yellow-800 mb-2">Payment Required</h3>
               <p className="text-yellow-700 mb-4">This feature is only available to users with completed payments. Please purchase a service plan to access service requests.</p>
@@ -632,7 +637,7 @@ export default function ServiceRequest() {
                   disabled={isDisabled}
                 />
                 <label htmlFor="ai-generation" className="ml-3 block text-lg font-medium text-gray-900">
-                  🤖 Enable AI Content Generation {!user ? '(Login required)' : !hasPaidService ? '(Payment required)' : ''}
+                  🤖 Enable AI Content Generation {!user ? '(Login required)' : hasPaidService === false ? '(Payment required)' : ''}
                 </label>
               </div>
               
@@ -798,7 +803,7 @@ export default function ServiceRequest() {
                 disabled={isDisabled || isSubmitting || files.length === 0 || !title.trim() || !description.trim()}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {!user ? 'Login Required' : !hasPaidService ? 'Payment Required' : isSubmitting ? 'Submitting...' : 'Submit Service Request'}
+                {!user ? 'Login Required' : hasPaidService === false ? 'Payment Required' : isSubmitting ? 'Submitting...' : 'Submit Service Request'}
               </button>
             </div>
           </form>

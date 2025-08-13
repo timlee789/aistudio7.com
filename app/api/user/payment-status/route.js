@@ -24,7 +24,7 @@ export async function GET(request) {
     const user = getUserFromToken(request);
     if (!user) {
       return NextResponse.json(
-        { error: 'Authentication required', hasPaidService: false },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
@@ -58,7 +58,7 @@ export async function GET(request) {
       console.error('Error closing connection:', endError);
     }
     return NextResponse.json(
-      { error: 'Server error occurred', hasPaidService: false },
+      { error: 'Server error occurred' },
       { status: 500 }
     );
   }

@@ -85,16 +85,14 @@ export function AuthProvider({ children }) {
 
   // Logout
   const logout = async () => {
-    console.log('🚪 AuthContext: Starting logout...');
     try {
       await fetch('/api/auth/logout', { 
         method: 'POST',
         credentials: 'include'
       });
       setUser(null);
-      console.log('✅ AuthContext: Logout completed');
     } catch (error) {
-      console.error('💥 AuthContext: Logout error:', error);
+      console.error('Logout error:', error);
     }
   };
 
@@ -126,19 +124,8 @@ export function AuthProvider({ children }) {
 
   // 초기 로드
   useEffect(() => {
-    console.log('🚀 AuthContext: Component mounted, loading user...');
     loadUser();
   }, []);
-
-  // 사용자 상태 변경 시 로그
-  useEffect(() => {
-    console.log('👤 AuthContext: User state changed:', user ? `${user.email} (${user.id})` : 'null');
-  }, [user]);
-
-  // 로딩 상태 변경 시 로그
-  useEffect(() => {
-    console.log('⏳ AuthContext: Loading state changed:', loading);
-  }, [loading]);
 
   const value = {
     user,

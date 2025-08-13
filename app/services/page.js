@@ -500,15 +500,6 @@ export default function Services() {
                     <span className="text-indigo-600 font-bold text-sm">✓</span>
                   </div>
                   <div className="ml-4">
-                    <span className="text-gray-900 font-semibold text-base">4 Short-form Videos</span>
-                    <p className="text-gray-500 text-sm mt-1">15~30 seconds per month</p>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="flex-shrink-0 w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center mt-0.5">
-                    <span className="text-indigo-600 font-bold text-sm">✓</span>
-                  </div>
-                  <div className="ml-4">
                     <span className="text-gray-900 font-semibold text-base">SNS Upload Service</span>
                     <p className="text-gray-500 text-sm mt-1">Facebook, Instagram management</p>
                   </div>
@@ -540,7 +531,7 @@ export default function Services() {
                   e.stopPropagation();
                   handlePayment('PLAN', 'Starter Plan', 99, {
                     description: 'Perfect for Small Businesses',
-                    features: ['8 SNS Image Contents', '4 Short-form Videos', 'SNS Upload Service', 'Caption & Hashtag Creation', 'Weekly Performance Reports']
+                    features: ['8 SNS Image Contents', 'SNS Upload Service', 'Caption & Hashtag Creation', 'Weekly Performance Reports']
                   });
                 }}
                 disabled={processing === 'Starter Plan'}
@@ -591,15 +582,6 @@ export default function Services() {
                     <span className="text-purple-600 font-bold text-sm">✓</span>
                   </div>
                   <div className="ml-4">
-                    <span className="text-gray-900 font-semibold text-base">6 Short-form Videos</span>
-                    <p className="text-gray-500 text-sm mt-1">High-quality production per month</p>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center mt-0.5">
-                    <span className="text-purple-600 font-bold text-sm">✓</span>
-                  </div>
-                  <div className="ml-4">
                     <span className="text-gray-900 font-semibold text-base">SNS + Ad Campaign Setup</span>
                     <p className="text-gray-500 text-sm mt-1">Paid advertising optimization (ad spend separate)</p>
                   </div>
@@ -631,7 +613,7 @@ export default function Services() {
                   e.stopPropagation();
                   handlePayment('PLAN', 'Growth Plan', 149, {
                     description: 'Best for Growing Companies',
-                    features: ['12 SNS Image Contents', '6 Short-form Videos', 'SNS + Ad Campaign Setup', 'Advanced Caption Strategy', 'Weekly Performance Reports']
+                    features: ['12 SNS Image Contents', 'SNS + Ad Campaign Setup', 'Advanced Caption Strategy', 'Weekly Performance Reports']
                   });
                 }}
                 disabled={processing === 'Growth Plan'}
@@ -676,15 +658,6 @@ export default function Services() {
                     <span className="text-orange-600 font-bold text-sm">✓</span>
                   </div>
                   <div className="ml-4">
-                    <span className="text-gray-900 font-semibold text-base">8 Short-form Videos</span>
-                    <p className="text-gray-500 text-sm mt-1">Professional production per month</p>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="flex-shrink-0 w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center mt-0.5">
-                    <span className="text-orange-600 font-bold text-sm">✓</span>
-                  </div>
-                  <div className="ml-4">
                     <span className="text-gray-900 font-semibold text-base">Full Campaign Management</span>
                     <p className="text-gray-500 text-sm mt-1">SNS upload + ad campaign optimization (ad spend separate)</p>
                   </div>
@@ -716,7 +689,7 @@ export default function Services() {
                   e.stopPropagation();
                   handlePayment('PLAN', 'Pro Marketing Plan', 199, {
                     description: 'Enterprise Solutions',
-                    features: ['16 SNS Image Contents', '8 Short-form Videos', 'Full Campaign Management', 'AI Avatar/Narration Videos', 'Advanced Analytics']
+                    features: ['16 SNS Image Contents', 'Full Campaign Management', 'AI Avatar/Narration Videos', 'Advanced Analytics']
                   });
                 }}
                 disabled={processing === 'Pro Marketing Plan'}
