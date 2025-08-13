@@ -55,7 +55,7 @@ export async function POST(request) {
       const file = formData.get(`file${i}`);
       if (file && file.size > 0) {
         try {
-          const uploadResult = await uploadFile(file, 'uploads', 'orders');
+          const uploadResult = await uploadFile(file, 'uploads', 'orders', true);
           
           if (!uploadResult.success) {
             throw new Error(uploadResult.error);
@@ -71,9 +71,10 @@ export async function POST(request) {
           });
         } catch (uploadError) {
           console.error('File upload error:', uploadError);
+          console.error('File details:', { name: file.name, size: file.size, type: file.type });
           await client.end();
           return NextResponse.json(
-            { error: `File upload failed: ${file.name}` },
+            { error: `File upload failed: ${file.name} - ${uploadError.message || uploadError}` },
             { status: 500 }
           );
         }
