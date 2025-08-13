@@ -29,31 +29,53 @@ const loadStripe = async () => {
 
 // Embedded Checkout Component
 const EmbeddedCheckout = ({ stripe, clientSecret }) => {
-  const [checkoutElement, setCheckoutElement] = useState(null);
+  const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!stripe || !clientSecret) return;
+    if (!stripe || !clientSecret || mounted) return;
 
-    const elements = stripe.elements({
-      clientSecret: clientSecret,
-    });
+    const mountCheckout = async () => {
+      try {
+        const elements = stripe.elements({
+          clientSecret: clientSecret,
+        });
 
-    const checkoutElement = elements.create('checkout');
-    checkoutElement.mount('#checkout-element');
-    
-    setCheckoutElement(checkoutElement);
-
-    return () => {
-      if (checkoutElement) {
-        checkoutElement.unmount();
+        const checkoutElement = elements.create('checkout');
+        await checkoutElement.mount('#checkout-element');
+        
+        setMounted(true);
+        setError(null);
+      } catch (err) {
+        console.error('Stripe embedded checkout error:', err);
+        setError('Failed to load payment form. Please try the regular checkout option.');
       }
     };
-  }, [stripe, clientSecret]);
+
+    mountCheckout();
+
+    return () => {
+      // Cleanup is handled by Stripe automatically
+    };
+  }, [stripe, clientSecret, mounted]);
+
+  if (error) {
+    return (
+      <div className="w-full p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-700">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
       <div id="checkout-element" className="min-h-[400px]">
-        {/* Stripe Checkout will be mounted here */}
+        {!mounted && (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <span className="ml-3 text-gray-600">Loading payment form...</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -107,12 +129,20 @@ export default function Services() {
       const data = await response.json();
       
       if (data.success) {
-        // Initialize Stripe and show embedded checkout
-        const stripe = await loadStripe();
-        setStripeInstance(stripe);
         setPaymentUrl(data.url);
-        setClientSecret(data.clientSecret || '');
         setCurrentPlan({ serviceType, serviceName, amount });
+        
+        // Only initialize embedded checkout if we have a valid client_secret
+        if (data.clientSecret && data.clientSecret.includes('_secret_')) {
+          const stripe = await loadStripe();
+          setStripeInstance(stripe);
+          setClientSecret(data.clientSecret);
+        } else {
+          // Clear embedded checkout data for fallback
+          setStripeInstance(null);
+          setClientSecret('');
+        }
+        
         setShowPaymentModal(true);
       } else {
         if (response.status === 401) {

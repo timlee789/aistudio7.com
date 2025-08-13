@@ -19,10 +19,13 @@ const mockStripe = {
         console.warn('🚨 Using Mock Stripe - Set STRIPE_SECRET_KEY for real payments');
         const sessionId = `cs_test_${Math.random().toString(36).substr(2, 9)}`;
         
-        return {
+        const mockSession = {
           id: sessionId,
           url: `https://www.aistudio7.com/payment/checkout?session_id=${sessionId}&amount=${options.line_items[0].price_data.unit_amount / 100}&service=${encodeURIComponent(options.metadata.serviceName)}&type=${options.metadata.serviceType}`
         };
+
+        // Don't provide client_secret for mock - this will trigger fallback to regular checkout
+        return mockSession;
       }
     }
   }
