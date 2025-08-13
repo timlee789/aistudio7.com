@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma-new';
+import { Client } from 'pg';
 
 export async function POST(request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     // Check authentication
     const token = request.cookies.get('token')?.value;
@@ -25,38 +30,52 @@ export async function POST(request) {
       );
     }
 
-    // Find the payment record
-    const payment = await prisma.payment.findFirst({
-      where: {
-        stripeSessionId: sessionId,
-        userId: decoded.userId
-      }
-    });
+    await client.connect();
 
-    if (!payment) {
+    // Find the payment record
+    const paymentResult = await client.query(
+      'SELECT * FROM payments WHERE "stripeSessionId" = $1 AND "userId" = $2',
+      [sessionId, decoded.userId]
+    );
+
+    if (paymentResult.rows.length === 0) {
+      await client.end();
       return NextResponse.json(
         { error: 'Payment not found' },
         { status: 404 }
       );
     }
 
+    const payment = paymentResult.rows[0];
+
     // Update payment status
-    const updatedPayment = await prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: status,
-        paidAt: status === 'COMPLETED' ? new Date() : null,
-        updatedAt: new Date()
-      }
-    });
+    const updateResult = await client.query(`
+      UPDATE payments 
+      SET status = $1, "paidAt" = $2, "updatedAt" = NOW() 
+      WHERE id = $3 
+      RETURNING *
+    `, [
+      status,
+      status === 'COMPLETED' ? new Date() : null,
+      payment.id
+    ]);
+
+    await client.end();
 
     return NextResponse.json({
       success: true,
-      payment: updatedPayment
+      payment: updateResult.rows[0]
     });
 
   } catch (error) {
     console.error('Payment completion error:', error);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to complete payment' },
       { status: 500 }

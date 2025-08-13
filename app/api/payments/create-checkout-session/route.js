@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma-new';
+import { Client } from 'pg';
+import { createId } from '@paralleldrive/cuid2';
 
 // Mock Stripe integration - In production, you would use actual Stripe
 const mockStripe = {
@@ -20,6 +21,11 @@ const mockStripe = {
 };
 
 export async function POST(request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
   try {
     // Check authentication
     const token = request.cookies.get('token')?.value;
@@ -51,17 +57,27 @@ export async function POST(request) {
       );
     }
 
+    await client.connect();
+
     // Create payment record in database
-    const payment = await prisma.payment.create({
-      data: {
-        amount: parseFloat(amount),
-        serviceType: serviceType,
-        serviceName: serviceName,
-        serviceDetails: serviceDetails ? JSON.stringify(serviceDetails) : null,
-        userId: decoded.userId,
-        status: 'PENDING'
-      }
-    });
+    const paymentId = createId();
+    const insertResult = await client.query(`
+      INSERT INTO payments (
+        id, amount, "serviceType", "serviceName", "serviceDetails", 
+        "userId", status, "createdAt", "updatedAt"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      RETURNING *
+    `, [
+      paymentId,
+      parseFloat(amount),
+      serviceType,
+      serviceName,
+      serviceDetails ? JSON.stringify(serviceDetails) : null,
+      decoded.userId,
+      'PENDING'
+    ]);
+
+    const payment = insertResult.rows[0];
 
     // Create Stripe checkout session (using mock for now)
     const session = await mockStripe.checkout.sessions.create({
@@ -90,10 +106,12 @@ export async function POST(request) {
     });
 
     // Update payment with Stripe session ID
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: { stripeSessionId: session.id }
-    });
+    await client.query(
+      'UPDATE payments SET "stripeSessionId" = $1, "updatedAt" = NOW() WHERE id = $2',
+      [session.id, payment.id]
+    );
+
+    await client.end();
 
     return NextResponse.json({
       success: true,
@@ -103,6 +121,13 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Payment Creation Error:', error.message);
+    
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing connection:', endError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create payment session', details: error.message },
       { status: 500 }
