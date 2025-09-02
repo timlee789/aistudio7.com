@@ -733,7 +733,7 @@ export default function ImagePortfolioPage() {
               <div style={{ background: 'rgba(255, 255, 255, 0.8)', borderRadius: '16px', padding: '40px', maxWidth: '500px', margin: '0 auto', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>No Image Portfolio Items</h3>
                 <p style={{ color: '#666', lineHeight: '1.6' }}>
-                  We're currently updating our image portfolio. Please check back soon to see our latest visual work!
+                  We&apos;re currently updating our image portfolio. Please check back soon to see our latest visual work!
                 </p>
               </div>
             </div>
