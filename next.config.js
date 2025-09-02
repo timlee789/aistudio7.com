@@ -1,16 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    turbo: {
-      rules: {
-        // Optimize asset loading
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js'
-        }
-      }
-    }
-  },
   // Enable image optimization
   images: {
     remotePatterns: [
@@ -29,8 +18,6 @@ const nextConfig = {
     }
     return config;
   },
-  // Optimize production build
-  swcMinify: true,
   // Enable static optimization
   trailingSlash: false,
   // Security headers
@@ -50,6 +37,10 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin'
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate'
           }
         ],
       },
