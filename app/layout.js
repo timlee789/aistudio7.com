@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "AiStudio7.com",
   description: "AI 기반 콘텐츠 제작 서비스",
+  other: {
+    'cache-control': 'no-store, no-cache, must-revalidate',
+    'pragma': 'no-cache',
+    'expires': '0',
+  }
 };
 
 export default function RootLayout({ children }) {
