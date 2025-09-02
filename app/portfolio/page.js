@@ -242,6 +242,21 @@ export default function PortfolioPage() {
                 Home
               </a>
               <a 
+                href="/services"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151',
+                  transition: 'color 0.3s ease',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  textDecoration: 'none'
+                }}
+              >
+                Services
+              </a>
+              <a 
                 href="/portfolio"
                 style={{
                   fontWeight: pathname.startsWith('/portfolio') ? 'bold' : 'normal',
@@ -999,6 +1014,18 @@ export default function PortfolioPage() {
             }}
           >
             Home
+          </a>
+          <a 
+            href="/services"
+            onClick={() => setMobileMenuOpen(false)}
+            style={{
+              color: 'white',
+              fontSize: '24px',
+              textDecoration: 'none',
+              fontWeight: pathname === '/services' ? 'bold' : 'normal'
+            }}
+          >
+            Services
           </a>
           <a 
             href="/portfolio"

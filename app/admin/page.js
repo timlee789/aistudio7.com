@@ -722,6 +722,16 @@ export default function AdminDashboard() {
                 Home
               </a>
               <a 
+                href="/services" 
+                className="hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#7c3aed' : '#374151'
+                }}
+              >
+                Services
+              </a>
+              <a 
                 href="/portfolio" 
                 className="hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium"
                 style={{
@@ -766,6 +776,17 @@ export default function AdminDashboard() {
                 }}
               >
                 Home
+              </a>
+              <a 
+                href="/services" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-purple-600"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#7c3aed' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Services
               </a>
               <a 
                 href="/portfolio" 

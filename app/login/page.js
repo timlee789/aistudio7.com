@@ -320,6 +320,16 @@ export default function Login() {
                 Home
               </a>
               <a 
+                href="/services" 
+                className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151'
+                }}
+              >
+                Services
+              </a>
+              <a 
                 href="/portfolio" 
                 className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
                 style={{
@@ -436,6 +446,13 @@ export default function Login() {
             onClick={() => setMobileMenuOpen(false)}
           >
             Home
+          </a>
+          <a 
+            href="/services"
+            className={`mobile-menu-item ${pathname === '/services' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Services
           </a>
           <a 
             href="/portfolio"

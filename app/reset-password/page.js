@@ -165,6 +165,26 @@ function ResetPasswordContent() {
                 Home
               </a>
               <a 
+                href="/services" 
+                className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151'
+                }}
+              >
+                Services
+              </a>
+              <a 
+                href="/portfolio" 
+                className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                style={{
+                  fontWeight: pathname.startsWith('/portfolio') ? 'bold' : 'normal',
+                  color: pathname.startsWith('/portfolio') ? '#4f46e5' : '#374151'
+                }}
+              >
+                Portfolio
+              </a>
+              <a 
                 href="/service-request" 
                 className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
                 style={{
@@ -245,6 +265,28 @@ function ResetPasswordContent() {
                 }}
               >
                 Home
+              </a>
+              <a 
+                href="/services" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Services
+              </a>
+              <a 
+                href="/portfolio" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname.startsWith('/portfolio') ? 'bold' : 'normal',
+                  color: pathname.startsWith('/portfolio') ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Portfolio
               </a>
               <a 
                 href="/service-request" 

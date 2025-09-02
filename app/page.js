@@ -36,6 +36,14 @@ export default function Home() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalImage, setModalImage] = useState({ src: '', alt: '', label: '', currentIndex: 0, images: [] });
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [carouselStates, setCarouselStates] = useState({});
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const itemsPerPage = 20;
 
 
   useEffect(() => {
@@ -56,7 +64,49 @@ export default function Home() {
     };
 
     loadBannerData();
+
+    // Load gallery data
+    const loadGalleryData = async () => {
+      try {
+        const galleryResponse = await fetch('/api/gallery');
+        const galleryData = await galleryResponse.json();
+        
+        if (galleryResponse.ok) {
+          setGalleryItems(galleryData.items);
+        } else {
+          console.error('Failed to load gallery items:', galleryData.error);
+          setGalleryItems([]);
+        }
+      } catch (error) {
+        console.error('Gallery loading error:', error);
+        setGalleryItems([]);
+      }
+    };
+
+    loadGalleryData();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      } else if (e.key === 'ArrowLeft') {
+        prevModalImage();
+      } else if (e.key === 'ArrowRight') {
+        nextModalImage();
+      }
+    };
+
+    if (modalOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'auto';
+    };
+  }, [modalOpen, modalImage]);
 
   const handlePayment = async (serviceType, serviceName, amount, serviceDetails = {}) => {
     if (loading) {
@@ -105,6 +155,128 @@ export default function Home() {
     } finally {
       setProcessing(null);
     }
+  };
+
+  const openModal = (item, imageIndex = 0) => {
+    const images = item.images && Array.isArray(item.images) && item.images.length > 0 
+      ? item.images 
+      : [{ url: item.path, alt: item.title, mimetype: item.mimetype }];
+    
+    const safeImageIndex = Math.max(0, Math.min(imageIndex, images.length - 1));
+    const currentImage = images[safeImageIndex];
+    
+    setModalImage({ 
+      src: currentImage?.url || currentImage?.src || item.path, 
+      alt: currentImage?.alt || item.title, 
+      label: item.title ? item.title.toUpperCase() : 'PORTFOLIO ITEM',
+      currentIndex: safeImageIndex,
+      images: images,
+      mimetype: currentImage?.mimetype || item.mimetype
+    });
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalImage({ src: '', alt: '', label: '', currentIndex: 0, images: [] });
+  };
+
+  const nextModalImage = () => {
+    if (modalImage.images && modalImage.images.length > 1) {
+      const nextIndex = modalImage.currentIndex < modalImage.images.length - 1 
+        ? modalImage.currentIndex + 1 
+        : 0;
+      const nextImage = modalImage.images[nextIndex];
+      if (nextImage) {
+        setModalImage(prev => ({
+          ...prev,
+          src: nextImage.url || nextImage.src || prev.src,
+          alt: nextImage.alt || prev.alt,
+          currentIndex: nextIndex,
+          mimetype: nextImage.mimetype || prev.mimetype
+        }));
+      }
+    }
+  };
+
+  const prevModalImage = () => {
+    if (modalImage.images && modalImage.images.length > 1) {
+      const prevIndex = modalImage.currentIndex > 0 
+        ? modalImage.currentIndex - 1 
+        : modalImage.images.length - 1;
+      const prevImage = modalImage.images[prevIndex];
+      if (prevImage) {
+        setModalImage(prev => ({
+          ...prev,
+          src: prevImage.url || prevImage.src || prev.src,
+          alt: prevImage.alt || prev.alt,
+          currentIndex: prevIndex,
+          mimetype: prevImage.mimetype || prev.mimetype
+        }));
+      }
+    }
+  };
+
+  const handleCarouselNext = (itemId, e) => {
+    e.stopPropagation();
+    setCarouselStates(prev => {
+      const currentIndex = prev[itemId] || 0;
+      const item = galleryItems.find(item => item.id === itemId);
+      const images = item?.images && Array.isArray(item.images) ? item.images : [];
+      const maxIndex = Math.max(0, images.length - 1);
+      return {
+        ...prev,
+        [itemId]: currentIndex < maxIndex ? currentIndex + 1 : 0
+      };
+    });
+  };
+
+  const handleCarouselPrev = (itemId, e) => {
+    e.stopPropagation();
+    setCarouselStates(prev => {
+      const currentIndex = prev[itemId] || 0;
+      const item = galleryItems.find(item => item.id === itemId);
+      const images = item?.images && Array.isArray(item.images) ? item.images : [];
+      const maxIndex = Math.max(0, images.length - 1);
+      return {
+        ...prev,
+        [itemId]: currentIndex > 0 ? currentIndex - 1 : maxIndex
+      };
+    });
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && modalImage.images && modalImage.images.length > 1) {
+      nextModalImage();
+    }
+    if (isRightSwipe && modalImage.images && modalImage.images.length > 1) {
+      prevModalImage();
+    }
+  };
+
+  const totalPages = Math.ceil(galleryItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = galleryItems.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -470,6 +642,15 @@ export default function Home() {
                 Home
               </a>
               <a 
+                href="/services"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151'
+                }}
+              >
+                Services
+              </a>
+              <a 
                 href="/portfolio"
                 style={{
                   fontWeight: pathname.startsWith('/portfolio') ? 'bold' : 'normal',
@@ -583,6 +764,13 @@ export default function Home() {
             Home
           </a>
           <a 
+            href="/services"
+            className={`mobile-menu-item ${pathname === '/services' ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Services
+          </a>
+          <a 
             href="/portfolio"
             className={`mobile-menu-item ${pathname.startsWith('/portfolio') ? 'active' : ''}`}
             onClick={() => setMobileMenuOpen(false)}
@@ -656,1003 +844,486 @@ export default function Home() {
         )}
       </div>
 
-      <div className="page-title">
-        <h1 style={{ fontSize: '3rem', fontWeight: 'bold', color: '#333', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)', margin: '0 0 10px 0', letterSpacing: '2px' }}>AiStudio7</h1>
-        <p style={{ fontSize: '1.4rem', color: '#666', fontWeight: '600', margin: '0 0 10px 0' }}>Smart Content. Real Impact.</p>
-        <p className="subtitle">Empowering Buford & North Atlanta small businesses with AI-powered ad creation, social media marketing, and brand growth strategies.</p>
-      </div>
+      {/* Main Content */}
+      <main style={{ padding: '40px 20px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
-      {/* Services Section */}
-      <div style={{ maxWidth: '1200px', margin: '80px auto 0 auto', padding: '0 40px' }}>
-        
-        {/* Pricing Plans */}
-        <div style={{ marginBottom: '80px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px', fontFamily: 'Inter, system-ui, sans-serif' }}>Service Plans</h2>
-            <p style={{ fontSize: '1.125rem', color: '#666', maxWidth: '640px', margin: '0 auto' }}>
-              Choose the perfect plan to accelerate your business growth with AI-powered content creation
-            </p>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px', maxWidth: '1400px', margin: '0 auto' }}>
-            
-            {/* Starter Plan */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '32px', transition: 'all 0.3s ease', cursor: 'pointer' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.transform = 'translateY(-4px)';
-                   e.target.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.transform = 'translateY(0)';
-                   e.target.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px', fontFamily: 'Inter, system-ui, sans-serif' }}>Starter Plan</h3>
-                <div style={{ marginBottom: '24px' }}>
-                  <span style={{ fontSize: '3rem', fontWeight: 'bold', color: '#4f46e5', fontFamily: 'Inter, system-ui, sans-serif' }}>$99</span>
-                  <span style={{ fontSize: '1.125rem', color: '#666', marginLeft: '8px' }}>/month</span>
-                </div>
-                <div style={{ background: '#eef2ff', color: '#4f46e5', padding: '8px 16px', borderRadius: '20px', fontSize: '0.875rem', fontWeight: '500', display: 'inline-block' }}>
-                  Perfect for local shops starting online
-                </div>
-              </div>
-              
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#eef2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#4f46e5', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>8 SNS Image Contents</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>AI design + basic editing</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#eef2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#4f46e5', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>SNS Upload</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Facebook, Instagram</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#eef2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#4f46e5', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>Basic Captions & Hashtags</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Basic optimization included</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#eef2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#4f46e5', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>Automated Weekly Performance Reports</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Automated delivery & insights</p>
-                  </div>
-                </li>
-              </ul>
-              
-              <button 
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePayment('PLAN', 'Starter Plan', 99, {
-                    description: 'Perfect for Small Businesses',
-                    features: ['8 SNS Image Contents', 'SNS Upload Service', 'Caption & Hashtag Creation', 'Weekly Performance Reports']
-                  });
+          {/* Portfolio Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: '30px',
+            marginBottom: '60px'
+          }}>
+            {currentItems.map((item, index) => (
+              <div 
+                key={item.id || index}
+                style={{
+                  background: 'white',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
                 }}
-                disabled={processing === 'Starter Plan'}
-                style={{ 
-                  width: '100%', 
-                  background: processing === 'Starter Plan' ? '#9ca3af' : '#4f46e5', 
-                  color: 'white', 
-                  padding: '16px 24px', 
-                  borderRadius: '12px', 
-                  border: 'none', 
-                  fontWeight: 'bold', 
-                  fontSize: '1.125rem', 
-                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)', 
-                  cursor: processing === 'Starter Plan' ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease'
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-10px)';
+                  e.currentTarget.style.boxShadow = '0 16px 40px rgba(0, 0, 0, 0.15)';
+                  // Show carousel arrows on hover
+                  const arrows = e.currentTarget.querySelectorAll('button');
+                  arrows.forEach(arrow => arrow.style.opacity = '1');
                 }}
-                onMouseEnter={(e) => {
-                  if (!processing) {
-                    e.target.style.background = '#4338ca';
-                    e.target.style.boxShadow = '0 6px 16px rgba(79, 70, 229, 0.4)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!processing) {
-                    e.target.style.background = '#4f46e5';
-                    e.target.style.boxShadow = '0 4px 12px rgba(79, 70, 229, 0.3)';
-                  }
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                  // Hide carousel arrows when not hovering
+                  const arrows = e.currentTarget.querySelectorAll('button');
+                  arrows.forEach(arrow => arrow.style.opacity = '0');
                 }}
               >
-                {processing === 'Starter Plan' ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '20px', height: '20px', animation: 'spin 1s linear infinite', marginRight: '8px' }}></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Get Started'
+                {/* Media Container */}
+                <div style={{ 
+                  position: 'relative',
+                  aspectRatio: '1/1',
+                  overflow: 'hidden',
+                  height: '100%',
+                  width: '100%'
+                }} onClick={() => openModal(item)}>
+                  {(() => {
+                    const images = item.images && Array.isArray(item.images) && item.images.length > 0 
+                      ? item.images 
+                      : [{ url: item.path, alt: item.title, mimetype: item.mimetype }];
+                    const currentIndex = carouselStates[item.id] || 0;
+                    const safeIndex = Math.max(0, Math.min(currentIndex, images.length - 1));
+                    const currentImage = images[safeIndex];
+                    
+                    const isVideo = currentImage?.mimetype?.startsWith('video/') || 
+                                   item.mimetype?.startsWith('video/') ||
+                                   (currentImage?.url || currentImage?.src || item.path)?.match(/\.(mp4|webm|ogg|mov|avi)$/i);
+                    
+                    return isVideo ? (
+                      <>
+                        <video 
+                          src={currentImage?.url || currentImage?.src || item.path || ''} 
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                          muted
+                          preload="metadata"
+                          onError={(e) => {
+                            e.target.src = item.path || '';
+                          }}
+                        />
+                        {/* Play Icon Overlay */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          background: 'rgba(0, 0, 0, 0.7)',
+                          borderRadius: '50%',
+                          width: '60px',
+                          height: '60px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '24px',
+                          opacity: 0.8,
+                          transition: 'opacity 0.2s'
+                        }}>
+                          ▶
+                        </div>
+                      </>
+                    ) : (
+                      <img 
+                        src={currentImage?.url || currentImage?.src || item.path || ''} 
+                        alt={currentImage?.alt || item.title || 'Portfolio Item'} 
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          e.target.src = item.path || '';
+                        }}
+                      />
+                    );
+                  })()}
+                  
+                  {/* Media Counter */}
+                  {(() => {
+                    const images = item.images && Array.isArray(item.images) && item.images.length > 0 
+                      ? item.images : [];
+                    return images.length > 1 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                      }}>
+                        {(carouselStates[item.id] || 0) + 1} / {images.length}
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Media Type Badge */}
+                  {(() => {
+                    const currentImage = item.images && Array.isArray(item.images) && item.images.length > 0 
+                      ? item.images[carouselStates[item.id] || 0]
+                      : { mimetype: item.mimetype };
+                    const isVideo = currentImage?.mimetype?.startsWith('video/') || 
+                                   item.mimetype?.startsWith('video/') ||
+                                   (currentImage?.url || currentImage?.src || item.path)?.match(/\.(mp4|webm|ogg|mov|avi)$/i);
+                    
+                    return (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        background: isVideo ? '#9333ea' : '#4f46e5',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                      }}>
+                        {isVideo ? '🎬 Video' : '🖼️ Image'}
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Carousel Navigation */}
+                  {(() => {
+                    const images = item.images && Array.isArray(item.images) && item.images.length > 0 
+                      ? item.images : [];
+                    return images.length > 1 && (
+                      <>
+                        <button 
+                          onClick={(e) => handleCarouselPrev(item.id, e)}
+                          style={{
+                            position: 'absolute',
+                            left: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '32px',
+                            height: '32px',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0,
+                            transition: 'opacity 0.2s',
+                            zIndex: 10
+                          }}
+                        >
+                          ‹
+                        </button>
+                        
+                        <button 
+                          onClick={(e) => handleCarouselNext(item.id, e)}
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '32px',
+                            height: '32px',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0,
+                            transition: 'opacity 0.2s',
+                            zIndex: 10
+                          }}
+                        >
+                          ›
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ textAlign: 'center', marginTop: '60px' }}>
+              <div style={{ display: 'inline-flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {/* Previous Button */}
+                {currentPage > 1 && (
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    style={{
+                      background: 'white',
+                      color: '#333',
+                      border: '1px solid #e5e7eb',
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Previous
+                  </button>
                 )}
-              </button>
-            </div>
 
-            {/* Growth Plan */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)', border: '2px solid #a855f7', padding: '32px', position: 'relative', transition: 'all 0.3s ease', cursor: 'pointer', transform: 'scale(1.05)' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.transform = 'scale(1.05) translateY(-4px)';
-                   e.target.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.transform = 'scale(1.05) translateY(0)';
-                   e.target.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)' }}>
-                <span style={{ background: 'linear-gradient(to right, #9333ea, #7c3aed)', color: 'white', padding: '8px 24px', borderRadius: '20px', fontSize: '0.875rem', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(147, 51, 234, 0.3)' }}>
-                  Most Popular
-                </span>
-              </div>
-              
-              <div style={{ textAlign: 'center', marginBottom: '32px', marginTop: '16px' }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px', fontFamily: 'Inter, system-ui, sans-serif' }}>Growth Plan</h3>
-                <div style={{ marginBottom: '24px' }}>
-                  <span style={{ fontSize: '3rem', fontWeight: 'bold', color: '#9333ea', fontFamily: 'Inter, system-ui, sans-serif' }}>$149</span>
-                  <span style={{ fontSize: '1.125rem', color: '#666', marginLeft: '8px' }}>/month</span>
-                </div>
-                <div style={{ background: '#f3e8ff', color: '#7c3aed', padding: '8px 16px', borderRadius: '20px', fontSize: '0.875rem', fontWeight: '500', display: 'inline-block' }}>
-                  Best for businesses ready to grow
-                </div>
-              </div>
-              
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#f3e8ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>12 Premium SNS Image Contents</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Premium AI design per month</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#f3e8ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>SNS + Ad Campaign Setup</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>ad spend separate</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#f3e8ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>Advanced Caption Strategy</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Optimized hashtags & engagement tactics</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#f3e8ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>Detailed Weekly Analytics Reports</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Detailed analytics & recommendations</p>
-                  </div>
-                </li>
-              </ul>
-              
-              <button 
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePayment('PLAN', 'Growth Plan', 149, {
-                    description: 'Best for Growing Companies',
-                    features: ['12 SNS Image Contents', 'SNS + Ad Campaign Setup', 'Advanced Caption Strategy', 'Weekly Performance Reports']
-                  });
-                }}
-                disabled={processing === 'Growth Plan'}
-                style={{ 
-                  width: '100%', 
-                  background: processing === 'Growth Plan' ? '#9ca3af' : '#9333ea', 
-                  color: 'white', 
-                  padding: '16px 24px', 
-                  borderRadius: '12px', 
-                  border: 'none', 
-                  fontWeight: 'bold', 
-                  fontSize: '1.125rem', 
-                  cursor: processing === 'Growth Plan' ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  if (!processing) {
-                    e.target.style.background = '#7c3aed';
+                {/* Page Numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
                   }
-                }}
-                onMouseLeave={(e) => {
-                  if (!processing) {
-                    e.target.style.background = '#9333ea';
-                  }
-                }}
-              >
-                {processing === 'Growth Plan' ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '20px', height: '20px', animation: 'spin 1s linear infinite', marginRight: '8px' }}></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Get Started'
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      style={{
+                        background: currentPage === pageNum ? '#4f46e5' : 'white',
+                        color: currentPage === pageNum ? 'white' : '#333',
+                        border: '1px solid #e5e7eb',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: currentPage === pageNum ? 'bold' : 'normal',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                {/* Next Button */}
+                {currentPage < totalPages && (
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    style={{
+                      background: 'white',
+                      color: '#333',
+                      border: '1px solid #e5e7eb',
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Next
+                  </button>
                 )}
-              </button>
-            </div>
-
-            {/* Pro Marketing Plan */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '32px', transition: 'all 0.3s ease', cursor: 'pointer' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.transform = 'translateY(-4px)';
-                   e.target.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.transform = 'translateY(0)';
-                   e.target.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px', fontFamily: 'Inter, system-ui, sans-serif' }}>Pro Marketing Plan</h3>
-                <div style={{ marginBottom: '24px' }}>
-                  <span style={{ fontSize: '3rem', fontWeight: 'bold', color: '#ea580c', fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
-                  <span style={{ fontSize: '1.125rem', color: '#666', marginLeft: '8px' }}>/month</span>
-                </div>
-                <div style={{ background: '#fff7ed', color: '#c2410c', padding: '8px 16px', borderRadius: '20px', fontSize: '0.875rem', fontWeight: '500', display: 'inline-block' }}>
-                  All-in-one for serious growth
-                </div>
               </div>
-              
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#fff7ed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#ea580c', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>16 Premium SNS Image Contents</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Premium AI design & editing per month</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#fff7ed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#ea580c', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>Full Campaign Management</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>SNS upload + ad campaign optimization (ad spend separate)</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#fff7ed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#ea580c', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>AI Avatar / Narration Videos</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>up to 4 per month</p>
-                  </div>
-                </li>
-                <li style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flexShrink: 0, width: '24px', height: '24px', background: '#fff7ed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                    <span style={{ color: '#ea580c', fontWeight: 'bold', fontSize: '0.875rem' }}>✓</span>
-                  </div>
-                  <div style={{ marginLeft: '16px' }}>
-                    <span style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>Advanced Analytics & Strategic Insights</span>
-                    <p style={{ color: '#666', fontSize: '0.875rem', margin: '4px 0 0 0' }}>Weekly reports with strategic insights</p>
-                  </div>
-                </li>
-              </ul>
-              
-              <button 
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePayment('PLAN', 'Pro Marketing Plan', 199, {
-                    description: 'Enterprise Solutions',
-                    features: ['16 SNS Image Contents', 'Full Campaign Management', 'AI Avatar/Narration Videos', 'Advanced Analytics']
-                  });
-                }}
-                disabled={processing === 'Pro Marketing Plan'}
-                style={{ 
-                  width: '100%', 
-                  background: processing === 'Pro Marketing Plan' ? '#9ca3af' : '#ea580c', 
-                  color: 'white', 
-                  padding: '16px 24px', 
-                  borderRadius: '12px', 
-                  border: 'none', 
-                  fontWeight: 'bold', 
-                  fontSize: '1.125rem', 
-                  cursor: processing === 'Pro Marketing Plan' ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  if (!processing) {
-                    e.target.style.background = '#dc2626';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!processing) {
-                    e.target.style.background = '#ea580c';
-                  }
-                }}
-              >
-                {processing === 'Pro Marketing Plan' ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '20px', height: '20px', animation: 'spin 1s linear infinite', marginRight: '8px' }}></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Get Started'
-                )}
-              </button>
             </div>
-          </div>
-          
-          <div style={{ textAlign: 'center', marginTop: '48px' }}>
-            <div style={{ background: '#f9fafb', borderRadius: '16px', padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-              <p style={{ color: '#374151', fontSize: '1rem', fontWeight: '500', marginBottom: '8px' }}>
-                📞 Need a custom solution? Contact us for enterprise packages
-              </p>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                All plans are monthly contracts and can be changed or cancelled at any time. No setup fees.
-              </p>
+          )}
+
+          {/* Empty State */}
+          {galleryItems.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.8)', borderRadius: '16px', padding: '40px', maxWidth: '500px', margin: '0 auto', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>No Portfolio Items</h3>
+                <p style={{ color: '#666', lineHeight: '1.6' }}>
+                  We're currently updating our portfolio. Please check back soon to see our latest work!
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
+      </main>
 
-        {/* Other Services */}
-        <div style={{ marginBottom: '80px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px', fontFamily: 'Inter, system-ui, sans-serif' }}>Other Services</h2>
-            <p style={{ fontSize: '1.125rem', color: '#666', maxWidth: '640px', margin: '0 auto' }}>
-              Additional professional services to complement your content strategy
-            </p>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-            
-            {/* Menu, Flyer, Poster Design */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Menu・Flyer・Poster Design
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  High-resolution, print-ready promotional materials for restaurants, cafes, and local events.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4f46e5', fontFamily: 'Inter, system-ui, sans-serif' }}>$99</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/piece</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('OTHER_SERVICE', 'Menu・Flyer・Poster Design', 99, {
-                        description: 'Promotional image creation with high-resolution files for printing',
-                        unit: 'per piece'
-                      });
-                    }}
-                    disabled={processing === 'Menu・Flyer・Poster Design'}
-                    style={{ 
-                      background: processing === 'Menu・Flyer・Poster Design' ? '#9ca3af' : '#4f46e5', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Menu・Flyer・Poster Design' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#4338ca';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#4f46e5';
-                    }}
-                  >
-                    {processing === 'Menu・Flyer・Poster Design' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Product/Service Photography */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Product/Service Photography
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  On-site photo & video shoot (Buford & Gainesville area). Editing included.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#059669', fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/session</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('OTHER_SERVICE', 'Product/Service Photography', 199, {
-                        description: 'On-site photo & video shoot (Buford, Georgia area, editing included)',
-                        unit: 'per session'
-                      });
-                    }}
-                    disabled={processing === 'Product/Service Photography'}
-                    style={{ 
-                      background: processing === 'Product/Service Photography' ? '#9ca3af' : '#059669', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Product/Service Photography' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#047857';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#059669';
-                    }}
-                  >
-                    {processing === 'Product/Service Photography' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* SNS Account Setup */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  SNS Account Setup
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  Profile design, bio writing, and initial hashtag optimization. Perfect for first-time SNS users.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2563eb', fontFamily: 'Inter, system-ui, sans-serif' }}>$59</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/account</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('OTHER_SERVICE', 'SNS Account Initial Setup', 59, {
-                        description: 'Profile design, basic bio writing, initial hashtag setup',
-                        unit: 'per account'
-                      });
-                    }}
-                    disabled={processing === 'SNS Account Initial Setup'}
-                    style={{ 
-                      background: processing === 'SNS Account Initial Setup' ? '#9ca3af' : '#2563eb', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'SNS Account Initial Setup' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#1d4ed8';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#2563eb';
-                    }}
-                  >
-                    {processing === 'SNS Account Initial Setup' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Story & Reels Production */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Story · Reels Production
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  15–30 sec short video optimized for Instagram/Facebook Stories & Reels. Boost engagement with trending content.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#db2777', fontFamily: 'Inter, system-ui, sans-serif' }}>$49</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/video</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('OTHER_SERVICE', 'Story・Reels Focused Production', 49, {
-                        description: 'Instagram/Facebook Story or Reels dedicated short video creation',
-                        unit: 'per video'
-                      });
-                    }}
-                    disabled={processing === 'Story・Reels Focused Production'}
-                    style={{ 
-                      background: processing === 'Story・Reels Focused Production' ? '#9ca3af' : '#db2777', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Story・Reels Focused Production' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#be185d';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#db2777';
-                    }}
-                  >
-                    {processing === 'Story・Reels Focused Production' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Website Landing Page */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Website Landing Page
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  WordPress-based advertising landing page with lead form integration. Optimized for paid campaigns.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0d9488', fontFamily: 'Inter, system-ui, sans-serif' }}>$249</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/one-time</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('OTHER_SERVICE', 'Website Landing Page Creation', 249, {
-                        description: 'WordPress-based advertising landing page with lead form integration',
-                        unit: 'one-time'
-                      });
-                    }}
-                    disabled={processing === 'Website Landing Page Creation'}
-                    style={{ 
-                      background: processing === 'Website Landing Page Creation' ? '#9ca3af' : '#0d9488', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Website Landing Page Creation' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#0f766e';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#0d9488';
-                    }}
-                  >
-                    {processing === 'Website Landing Page Creation' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Promotion Package */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Event Promotion Package
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  Bundle: Event poster + 3 SNS images + 15-second video for seasonal promotions or events.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc2626', fontFamily: 'Inter, system-ui, sans-serif' }}>$199</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/package</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('OTHER_SERVICE', 'Event Promotion Package', 199, {
-                        description: 'Event poster + 3 SNS images + 15-second video creation bundle',
-                        unit: 'per package'
-                      });
-                    }}
-                    disabled={processing === 'Event Promotion Package'}
-                    style={{ 
-                      background: processing === 'Event Promotion Package' ? '#9ca3af' : '#dc2626', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Event Promotion Package' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#b91c1c';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#dc2626';
-                    }}
-                  >
-                    {processing === 'Event Promotion Package' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-          
-          <div style={{ textAlign: 'center', marginTop: '48px' }}>
-            <div style={{ background: '#f9fafb', borderRadius: '16px', padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-              <p style={{ color: '#374151', fontSize: '1rem', fontWeight: '500', marginBottom: '8px' }}>
-                💼 Mix and match services to create your perfect marketing solution
-              </p>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                All services can be combined with monthly plans for additional discounts. Contact us for custom packages.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Recommended Bundles */}
-        <div style={{ marginBottom: '80px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333', marginBottom: '16px', fontFamily: 'Inter, system-ui, sans-serif' }}>Recommended Bundles</h2>
-            <p style={{ fontSize: '1.125rem', color: '#666', maxWidth: '640px', margin: '0 auto' }}>
-              Save money with our carefully curated service packages
-            </p>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-            
-            {/* Local Restaurant Starter Pack */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Local Restaurant Starter Pack
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  Starter Plan ($99) + Poster Design ($99)
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4f46e5', fontFamily: 'Inter, system-ui, sans-serif' }}>$179</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/month</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('BUNDLE', 'Local Restaurant Starter Pack', 179, {
-                        description: 'Starter Plan + Poster Design',
-                        unit: 'per month'
-                      });
-                    }}
-                    disabled={processing === 'Local Restaurant Starter Pack'}
-                    style={{ 
-                      background: processing === 'Local Restaurant Starter Pack' ? '#9ca3af' : '#4f46e5', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Local Restaurant Starter Pack' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#4338ca';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#4f46e5';
-                    }}
-                  >
-                    {processing === 'Local Restaurant Starter Pack' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Real Estate Growth Pack */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Real Estate Growth Pack
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  Growth Plan ($149) + Photography ($199) + Landing Page ($249)
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#9333ea', fontFamily: 'Inter, system-ui, sans-serif' }}>$597</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/month</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('BUNDLE', 'Real Estate Growth Pack', 597, {
-                        description: 'Growth Plan + Photography + Landing Page',
-                        unit: 'per month'
-                      });
-                    }}
-                    disabled={processing === 'Real Estate Growth Pack'}
-                    style={{ 
-                      background: processing === 'Real Estate Growth Pack' ? '#9ca3af' : '#9333ea', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Real Estate Growth Pack' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#7c3aed';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#9333ea';
-                    }}
-                  >
-                    {processing === 'Real Estate Growth Pack' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Special Pack */}
-            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '24px', transition: 'all 0.3s ease' }}
-                 onMouseEnter={(e) => {
-                   e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                 }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '12px', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  Event Special Pack
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  Pro Plan ($199) + Event Promotion Package ($199)
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ea580c', fontFamily: 'Inter, system-ui, sans-serif' }}>$398</span>
-                    <span style={{ color: '#666', fontSize: '0.875rem', marginLeft: '4px' }}>/month</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePayment('BUNDLE', 'Event Special Pack', 398, {
-                        description: 'Pro Plan + Event Promotion Package',
-                        unit: 'per month'
-                      });
-                    }}
-                    disabled={processing === 'Event Special Pack'}
-                    style={{ 
-                      background: processing === 'Event Special Pack' ? '#9ca3af' : '#ea580c', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      fontWeight: '600', 
-                      fontSize: '0.875rem', 
-                      cursor: processing === 'Event Special Pack' ? 'not-allowed' : 'pointer',
-                      transition: 'background 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing) e.target.style.background = '#dc2626';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing) e.target.style.background = '#ea580c';
-                    }}
-                  >
-                    {processing === 'Event Special Pack' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ border: '2px solid transparent', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '4px' }}></div>
-                        Processing...
-                      </div>
-                    ) : (
-                      'Order Now'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Footer CTA */}
-        <div style={{ textAlign: 'center', marginBottom: '80px', padding: '60px 40px', background: 'rgba(255, 255, 255, 0.8)', borderRadius: '16px', maxWidth: '800px', margin: '0 auto 80px auto' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333', marginBottom: '32px', fontFamily: 'Inter, system-ui, sans-serif' }}>Ready to grow your business with AiStudio7?</h2>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a 
-              href="#plans" 
-              style={{ 
-                background: '#4f46e5', 
-                color: 'white', 
-                padding: '16px 32px', 
-                borderRadius: '8px', 
-                textDecoration: 'none', 
-                fontWeight: 'bold', 
-                fontSize: '1.125rem',
-                transition: 'background 0.3s ease',
-                display: 'inline-block'
+      {/* Modal for popup */}
+      {modalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.9)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }} onClick={closeModal}>
+          <div 
+            style={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <button 
+              onClick={closeModal}
+              style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '0',
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                fontSize: '30px',
+                cursor: 'pointer',
+                zIndex: 10010
               }}
-              onMouseEnter={(e) => e.target.style.background = '#4338ca'}
-              onMouseLeave={(e) => e.target.style.background = '#4f46e5'}
             >
-              Start Now
-            </a>
-            <a 
-              href="#plans" 
-              style={{ 
-                background: '#ff3b3b', 
-                color: 'white', 
-                padding: '16px 32px', 
-                borderRadius: '8px', 
-                textDecoration: 'none', 
-                fontWeight: 'bold', 
-                fontSize: '1.125rem',
-                transition: 'background 0.3s ease',
-                display: 'inline-block'
-              }}
-              onMouseEnter={(e) => e.target.style.background = '#dc2626'}
-              onMouseLeave={(e) => e.target.style.background = '#ff3b3b'}
-            >
-              Book a Free Demo
-            </a>
+              ×
+            </button>
+            <div style={{
+              position: 'absolute',
+              top: '-40px',
+              left: '0',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
+              {modalImage.label}
+            </div>
+            
+            {modalImage.images && modalImage.images.length > 1 && (
+              <div style={{
+                position: 'absolute',
+                bottom: '-40px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}>
+                {(modalImage.currentIndex || 0) + 1} / {modalImage.images.length || 1}
+              </div>
+            )}
+            
+            {(() => {
+              const currentImage = modalImage.images && modalImage.images.length > 0 
+                ? modalImage.images[modalImage.currentIndex] 
+                : { src: modalImage.src, mimetype: modalImage.mimetype };
+              
+              const isVideo = currentImage?.mimetype?.startsWith('video/') || 
+                             modalImage.mimetype?.startsWith('video/') ||
+                             modalImage.src?.match(/\.(mp4|webm|ogg|mov|avi)$/i);
+              
+              return isVideo ? (
+                <video 
+                  src={modalImage.src}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    borderRadius: '8px'
+                  }}
+                  controls
+                  autoPlay={false}
+                />
+              ) : (
+                <img 
+                  src={modalImage.src} 
+                  alt={modalImage.alt}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    borderRadius: '8px'
+                  }}
+                  draggable="false"
+                />
+              );
+            })()}
+            
+            {modalImage.images && modalImage.images.length > 1 && (
+              <>
+                <button 
+                  onClick={prevModalImage}
+                  style={{
+                    position: 'absolute',
+                    left: '-50px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10005
+                  }}
+                >
+                  ‹
+                </button>
+                
+                <button 
+                  onClick={nextModalImage}
+                  style={{
+                    position: 'absolute',
+                    right: '-50px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10005
+                  }}
+                >
+                  ›
+                </button>
+              </>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
 
       {/* Payment Modal */}

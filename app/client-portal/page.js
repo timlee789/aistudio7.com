@@ -203,6 +203,16 @@ export default function ClientPortal() {
                 Home
               </a>
               <a 
+                href="/services" 
+                className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151'
+                }}
+              >
+                Services
+              </a>
+              <a 
                 href="/portfolio" 
                 className="hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
                 style={{
@@ -284,6 +294,17 @@ export default function ClientPortal() {
                 }}
               >
                 Home
+              </a>
+              <a 
+                href="/services" 
+                className="mobile-menu-item block px-3 py-2 rounded-md text-base font-medium hover:text-indigo-600"
+                style={{
+                  fontWeight: pathname === '/services' ? 'bold' : 'normal',
+                  color: pathname === '/services' ? '#4f46e5' : '#374151',
+                  textDecoration: 'none'
+                }}
+              >
+                Services
               </a>
               <a 
                 href="/portfolio" 
@@ -387,7 +408,7 @@ export default function ClientPortal() {
             <h3 className="text-lg font-semibold text-yellow-800 mb-2">Payment Required</h3>
             <p className="text-yellow-700 mb-4">The client portal is only available to users with completed payments. Please purchase a service plan to access your order history and management features.</p>
             <button
-              onClick={() => window.location.href = '/portfolio'}
+              onClick={() => window.location.href = '/services'}
               className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
             >
               View Services
