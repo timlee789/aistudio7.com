@@ -2,47 +2,12 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { Client } from 'pg';
 import { createId } from '@paralleldrive/cuid2';
-import fs from 'fs';
-import path from 'path';
+import { uploadToCloudinary } from '@/utils/cloudinaryUpload';
 
 // Configure for Vercel deployment
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout for large uploads
 
-// Local upload function
-async function uploadFileLocally(file, folder = 'gallery') {
-  try {
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', folder);
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}-${Date.now()}-${createId()}.${fileExt}`;
-    const filePath = path.join(uploadDir, fileName);
-
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    fs.writeFileSync(filePath, buffer);
-
-    return {
-      success: true,
-      filename: fileName,
-      originalName: file.name,
-      mimetype: file.type,
-      size: file.size,
-      url: `/uploads/${folder}/${fileName}`,
-      path: `/uploads/${folder}/${fileName}`
-    };
-
-  } catch (error) {
-    console.error('Local file upload error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
 
 function getUserFromToken(request) {
   try {
@@ -194,7 +159,7 @@ export async function POST(request) {
     const uploadedFiles = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const uploadResult = await uploadFileLocally(file, 'gallery');
+      const uploadResult = await uploadToCloudinary(file, 'gallery');
       
       if (!uploadResult.success) {
         return NextResponse.json(
