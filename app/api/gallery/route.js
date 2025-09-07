@@ -5,6 +5,10 @@ import { createId } from '@paralleldrive/cuid2';
 import fs from 'fs';
 import path from 'path';
 
+// Configure body size limit for this route
+export const runtime = 'nodejs';
+export const maxDuration = 60; // 60 seconds timeout for large uploads
+
 // Local upload function
 async function uploadFileLocally(file, folder = 'gallery') {
   try {
@@ -124,7 +128,16 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const formData = await request.formData();
+    let formData;
+    try {
+      formData = await request.formData();
+    } catch (error) {
+      console.error('FormData parsing error:', error);
+      return NextResponse.json(
+        { error: 'Request Entity Too Large. Please reduce file sizes or upload fewer files.' },
+        { status: 413 }
+      );
+    }
     const files = formData.getAll('files');
     const title = formData.get('title');
     const description = formData.get('description') || '';

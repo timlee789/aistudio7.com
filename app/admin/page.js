@@ -415,6 +415,16 @@ export default function AdminDashboard() {
         
         return true;
       });
+      
+      // Check total size
+      const totalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
+      const maxTotalSize = 100 * 1024 * 1024; // 100MB total
+      
+      if (totalSize > maxTotalSize) {
+        alert('Total file size exceeds 100MB. Please select smaller files or fewer files.');
+        return;
+      }
+      
       setGalleryUploadFiles(validFiles);
     }
   };
@@ -449,7 +459,25 @@ export default function AdminDashboard() {
         body: formData,
       });
 
-      const data = await response.json();
+      // Handle 413 error before trying to parse JSON
+      if (response.status === 413) {
+        alert('Files too large. Please reduce file sizes:\n• Max 4MB per image\n• Max 50MB per video\n• Max 100MB total');
+        return;
+      }
+
+      // Try to parse response
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        if (response.status === 413) {
+          alert('Files too large. Please reduce file sizes:\n• Max 4MB per image\n• Max 50MB per video\n• Max 100MB total');
+        } else {
+          alert(`Upload failed: Server error (${response.status})`);
+        }
+        return;
+      }
       
       if (response.ok) {
         alert('Gallery item uploaded successfully!');
@@ -459,15 +487,7 @@ export default function AdminDashboard() {
         setGalleryUploadFiles([]);
         loadGalleryItems();
       } else {
-        if (response.status === 413) {
-          alert('Files too large. Please reduce file sizes (max 4MB for images, 50MB for videos, 100MB total).');
-        } else {
-          try {
-            alert('Upload failed: ' + data.error);
-          } catch (parseError) {
-            alert('Upload failed: Server error (413 - files too large). Max: 4MB for images, 50MB for videos.');
-          }
-        }
+        alert('Upload failed: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Gallery upload error:', error);
@@ -2150,7 +2170,7 @@ export default function AdminDashboard() {
                           required
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Select up to 4 images/videos for a carousel. Max 4MB per file. Files will be displayed in the order selected.
+                          Select up to 4 files. Max: 4MB per image, 50MB per video, 100MB total. Files will be displayed in the order selected.
                         </p>
                       </div>
 
