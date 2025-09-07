@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { compressImage, needsCompression } from '@/utils/imageCompression';
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
@@ -389,43 +390,63 @@ export default function AdminDashboard() {
     }
   };
 
-    const handleGalleryFileUpload = (e) => {
+    const handleGalleryFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) {
-      const validFiles = files.slice(0, 4).filter(file => {
-        // Check file type
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
+      // Show loading state
+      setGalleryLoading(true);
+      
+      try {
+        const processedFiles = [];
         
-        if (!isImage && !isVideo) {
-          alert(`File "${file.name}" is not a supported format. Please select images or videos only.`);
-          return false;
+        for (let file of files.slice(0, 4)) {
+          // Check file type
+          const isImage = file.type.startsWith('image/');
+          const isVideo = file.type.startsWith('video/');
+          
+          if (!isImage && !isVideo) {
+            alert(`File "${file.name}" is not a supported format. Please select images or videos only.`);
+            continue;
+          }
+          
+          // Process images
+          if (isImage && needsCompression(file)) {
+            try {
+              console.log(`Compressing ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
+              const compressedFile = await compressImage(file, 1); // Compress to max 1MB
+              console.log(`Compressed to ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+              processedFiles.push(compressedFile);
+            } catch (error) {
+              console.error(`Failed to compress ${file.name}:`, error);
+              processedFiles.push(file); // Use original if compression fails
+            }
+          } else if (isVideo) {
+            // Check video size
+            const maxVideoSize = 4 * 1024 * 1024; // Reduce to 4MB for Vercel limits
+            if (file.size > maxVideoSize) {
+              alert(`Video "${file.name}" is too large. Maximum size is 4MB for videos on Vercel free tier.`);
+              continue;
+            }
+            processedFiles.push(file);
+          } else {
+            processedFiles.push(file);
+          }
         }
         
-        // Check file size based on type
-        const maxImageSize = 4 * 1024 * 1024; // 4MB for images
-        const maxVideoSize = 50 * 1024 * 1024; // 50MB for videos
-        const maxSize = isVideo ? maxVideoSize : maxImageSize;
-        const maxSizeMB = isVideo ? 50 : 4;
+        // Check total size after compression
+        const totalSize = processedFiles.reduce((sum, file) => sum + file.size, 0);
+        const maxTotalSize = 4 * 1024 * 1024; // 4MB total for Vercel
         
-        if (file.size > maxSize) {
-          alert(`File "${file.name}" is too large. Maximum size is ${maxSizeMB}MB for ${isVideo ? 'videos' : 'images'}.`);
-          return false;
+        if (totalSize > maxTotalSize) {
+          alert('Total file size still exceeds 4MB after compression. Please use fewer or smaller files.');
+          setGalleryLoading(false);
+          return;
         }
         
-        return true;
-      });
-      
-      // Check total size
-      const totalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
-      const maxTotalSize = 100 * 1024 * 1024; // 100MB total
-      
-      if (totalSize > maxTotalSize) {
-        alert('Total file size exceeds 100MB. Please select smaller files or fewer files.');
-        return;
+        setGalleryUploadFiles(processedFiles);
+      } finally {
+        setGalleryLoading(false);
       }
-      
-      setGalleryUploadFiles(validFiles);
     }
   };
 
@@ -461,7 +482,7 @@ export default function AdminDashboard() {
 
       // Handle 413 error before trying to parse JSON
       if (response.status === 413) {
-        alert('Files too large. Please reduce file sizes:\n• Max 4MB per image\n• Max 50MB per video\n• Max 100MB total');
+        alert('Files are too large for Vercel free tier.\n\nImages are automatically compressed, but the total size still exceeds 4MB.\n\nPlease try:\n• Uploading fewer files at once\n• Using smaller source images');
         return;
       }
 
@@ -472,7 +493,7 @@ export default function AdminDashboard() {
       } catch (parseError) {
         console.error('Failed to parse response:', parseError);
         if (response.status === 413) {
-          alert('Files too large. Please reduce file sizes:\n• Max 4MB per image\n• Max 50MB per video\n• Max 100MB total');
+          alert('Files are too large for Vercel. Please use smaller files or upgrade to Vercel Pro.');
         } else {
           alert(`Upload failed: Server error (${response.status})`);
         }
@@ -2166,12 +2187,18 @@ export default function AdminDashboard() {
                           accept="image/*,video/*"
                           multiple
                           onChange={handleGalleryFileUpload}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                          disabled={galleryLoading}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                           required
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Select up to 4 files. Max: 4MB per image, 50MB per video, 100MB total. Files will be displayed in the order selected.
+                          Select up to 4 files. Images over 1MB will be automatically compressed. Max 4MB total for Vercel free tier.
                         </p>
+                        {galleryLoading && galleryUploadFiles.length === 0 && (
+                          <p className="text-xs text-blue-600 mt-1 animate-pulse">
+                            Compressing images... Please wait...
+                          </p>
+                        )}
                       </div>
 
                       {galleryUploadFiles.length > 0 && (
