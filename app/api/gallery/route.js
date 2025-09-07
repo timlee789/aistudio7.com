@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { Client } from 'pg';
 import { createId } from '@paralleldrive/cuid2';
-import { uploadToCloudinary } from '@/utils/cloudinaryUpload';
+import { uploadToTmp } from '@/lib/tmpFileUpload';
 
 // Configure for Vercel deployment
 export const runtime = 'nodejs';
@@ -159,7 +159,7 @@ export async function POST(request) {
     const uploadedFiles = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const uploadResult = await uploadToCloudinary(file, 'gallery');
+      const uploadResult = await uploadToTmp(file, 'gallery');
       
       if (!uploadResult.success) {
         return NextResponse.json(
