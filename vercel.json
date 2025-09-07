@@ -6,7 +6,11 @@
   "framework": "nextjs",
   "functions": {
     "app/api/**/*.js": {
-      "maxDuration": 30
+      "maxDuration": 60
+    },
+    "app/api/gallery/route.js": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
   "regions": ["iad1"],

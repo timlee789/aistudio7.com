@@ -5,7 +5,7 @@ import { createId } from '@paralleldrive/cuid2';
 import fs from 'fs';
 import path from 'path';
 
-// Configure body size limit for this route
+// Configure for Vercel deployment
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout for large uploads
 

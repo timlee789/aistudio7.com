@@ -10,15 +10,11 @@ const nextConfig = {
   },
   // Optimize for Vercel serverless functions
   serverExternalPackages: ['pg'],
-  // Configure API routes to handle larger uploads
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb',
+  experimental: {
+    // Increase payload size limit
+    serverActions: {
+      bodySizeLimit: '100mb',
     },
-  },
-  // Increase timeout for serverless functions
-  serverRuntimeConfig: {
-    bodySizeLimit: '100mb',
   },
 };
 
