@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { compressImage, needsCompression } from '@/utils/imageCompression';
+import { uploadDirectToCloudinary } from '@/utils/cloudinaryDirectUpload';
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
@@ -421,10 +422,10 @@ export default function AdminDashboard() {
               processedFiles.push(file); // Use original if compression fails
             }
           } else if (isVideo) {
-            // Check video size - Cloudinary can handle larger files
-            const maxVideoSize = 50 * 1024 * 1024; // 50MB for videos
+            // Check video size - 20MB limit for videos
+            const maxVideoSize = 20 * 1024 * 1024; // 20MB for videos
             if (file.size > maxVideoSize) {
-              alert(`Video "${file.name}" is too large. Maximum size is 50MB for videos.`);
+              alert(`Video "${file.name}" is too large. Maximum size is 20MB for videos.`);
               continue;
             }
             processedFiles.push(file);
@@ -433,12 +434,12 @@ export default function AdminDashboard() {
           }
         }
         
-        // Check total size after compression - Cloudinary allows larger uploads
+        // Check total size after compression
         const totalSize = processedFiles.reduce((sum, file) => sum + file.size, 0);
-        const maxTotalSize = 100 * 1024 * 1024; // 100MB total
+        const maxTotalSize = 50 * 1024 * 1024; // 50MB total (mix of images and videos)
         
         if (totalSize > maxTotalSize) {
-          alert('Total file size exceeds 100MB. Please use fewer or smaller files.');
+          alert('Total file size exceeds 50MB. Please use fewer or smaller files.');
           setGalleryLoading(false);
           return;
         }
@@ -467,38 +468,37 @@ export default function AdminDashboard() {
 
     setGalleryLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('title', galleryTitle);
-      formData.append('description', galleryDescription);
+      // Upload files directly to Cloudinary to bypass Vercel size limits
+      const uploadedFiles = [];
       
-      galleryUploadFiles.forEach((file, index) => {
-        formData.append(`files`, file);
-      });
-
-      const response = await fetch('/api/gallery', {
-        method: 'POST',
-        body: formData,
-      });
-
-      // Handle 413 error before trying to parse JSON
-      if (response.status === 413) {
-        alert('Request too large. Please try:\n• Uploading fewer files at once\n• Using smaller images\n• Images are automatically compressed to under 1MB');
-        return;
-      }
-
-      // Try to parse response
-      let data;
-      try {
-        data = await response.json();
-      } catch (parseError) {
-        console.error('Failed to parse response:', parseError);
-        if (response.status === 413) {
-          alert('Files too large. Please use smaller files.');
-        } else {
-          alert(`Upload failed: Server error (${response.status})`);
+      for (let i = 0; i < galleryUploadFiles.length; i++) {
+        const file = galleryUploadFiles[i];
+        console.log(`Uploading file ${i + 1}/${galleryUploadFiles.length}: ${file.name}`);
+        
+        const uploadResult = await uploadDirectToCloudinary(file, 'gallery');
+        
+        if (!uploadResult.success) {
+          alert(`Upload failed for file "${file.name}": ${uploadResult.error}`);
+          return;
         }
-        return;
+        
+        uploadedFiles.push(uploadResult);
       }
+      
+      // Send uploaded file data to our API
+      const response = await fetch('/api/gallery/direct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: galleryTitle,
+          description: galleryDescription,
+          uploadedFiles: uploadedFiles,
+        }),
+      });
+
+      const data = await response.json();
       
       if (response.ok) {
         alert('Gallery item uploaded successfully!');
@@ -2192,7 +2192,7 @@ export default function AdminDashboard() {
                           required
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Select up to 4 files. Images over 1MB will be automatically compressed and uploaded to Cloudinary.
+                          Select up to 4 files. Images: auto-compressed if over 1MB. Videos: max 20MB. Total: max 50MB.
                         </p>
                         {galleryLoading && galleryUploadFiles.length === 0 && (
                           <p className="text-xs text-blue-600 mt-1 animate-pulse">
