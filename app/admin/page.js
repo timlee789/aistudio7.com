@@ -421,10 +421,10 @@ export default function AdminDashboard() {
               processedFiles.push(file); // Use original if compression fails
             }
           } else if (isVideo) {
-            // Check video size
-            const maxVideoSize = 4 * 1024 * 1024; // Reduce to 4MB for Vercel limits
+            // Check video size - Cloudinary can handle larger files
+            const maxVideoSize = 50 * 1024 * 1024; // 50MB for videos
             if (file.size > maxVideoSize) {
-              alert(`Video "${file.name}" is too large. Maximum size is 4MB for videos on Vercel free tier.`);
+              alert(`Video "${file.name}" is too large. Maximum size is 50MB for videos.`);
               continue;
             }
             processedFiles.push(file);
@@ -433,12 +433,12 @@ export default function AdminDashboard() {
           }
         }
         
-        // Check total size after compression
+        // Check total size after compression - Cloudinary allows larger uploads
         const totalSize = processedFiles.reduce((sum, file) => sum + file.size, 0);
-        const maxTotalSize = 4 * 1024 * 1024; // 4MB total for Vercel
+        const maxTotalSize = 100 * 1024 * 1024; // 100MB total
         
         if (totalSize > maxTotalSize) {
-          alert('Total file size still exceeds 4MB after compression. Please use fewer or smaller files.');
+          alert('Total file size exceeds 100MB. Please use fewer or smaller files.');
           setGalleryLoading(false);
           return;
         }
@@ -482,7 +482,7 @@ export default function AdminDashboard() {
 
       // Handle 413 error before trying to parse JSON
       if (response.status === 413) {
-        alert('Files are too large for Vercel free tier.\n\nImages are automatically compressed, but the total size still exceeds 4MB.\n\nPlease try:\n• Uploading fewer files at once\n• Using smaller source images');
+        alert('Request too large. Please try:\n• Uploading fewer files at once\n• Using smaller images\n• Images are automatically compressed to under 1MB');
         return;
       }
 
@@ -493,7 +493,7 @@ export default function AdminDashboard() {
       } catch (parseError) {
         console.error('Failed to parse response:', parseError);
         if (response.status === 413) {
-          alert('Files are too large for Vercel. Please use smaller files or upgrade to Vercel Pro.');
+          alert('Files too large. Please use smaller files.');
         } else {
           alert(`Upload failed: Server error (${response.status})`);
         }
@@ -2192,7 +2192,7 @@ export default function AdminDashboard() {
                           required
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Select up to 4 files. Images over 1MB will be automatically compressed. Max 4MB total for Vercel free tier.
+                          Select up to 4 files. Images over 1MB will be automatically compressed and uploaded to Cloudinary.
                         </p>
                         {galleryLoading && galleryUploadFiles.length === 0 && (
                           <p className="text-xs text-blue-600 mt-1 animate-pulse">
