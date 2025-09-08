@@ -14,27 +14,24 @@ export async function uploadDirectToCloudinary(file, folder = 'gallery') {
     });
 
     if (!signatureResponse.ok) {
-      throw new Error('Failed to get upload signature');
+      const error = await signatureResponse.text();
+      throw new Error(`Failed to get upload signature: ${error}`);
     }
 
-    const { signature, timestamp, cloudName, apiKey } = await signatureResponse.json();
+    const { signature, timestamp, cloudName, apiKey, folder: signedFolder } = await signatureResponse.json();
 
     // Create FormData for Cloudinary upload
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('signature', signature);
-    formData.append('timestamp', timestamp);
     formData.append('api_key', apiKey);
-    formData.append('folder', `aistudio7/${folder}`);
-    
-    // Add transformations
-    if (file.type.startsWith('image/')) {
-      formData.append('transformation', 'q_auto,f_auto');
-    }
+    formData.append('timestamp', timestamp);
+    formData.append('signature', signature);
+    formData.append('folder', signedFolder || `aistudio7/${folder}`);
     
     // Upload directly to Cloudinary
+    const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
     const uploadResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/${file.type.startsWith('video/') ? 'video' : 'image'}/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
       {
         method: 'POST',
         body: formData,

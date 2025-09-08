@@ -38,25 +38,24 @@ export async function POST(request) {
     
     const timestamp = Math.round(new Date().getTime() / 1000);
     
-    // Parameters for signature
-    const params = {
-      timestamp: timestamp,
+    // Create params to sign - must match exactly what we send to Cloudinary
+    const paramsToSign = {
       folder: folder,
+      timestamp: timestamp,
     };
 
-    // Add resource_type for videos
-    if (resource_type === 'video') {
-      params.resource_type = 'video';
-    }
+    // Generate signature using the same params
+    const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
 
-    // Generate signature
-    const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
+    console.log('Signature params:', paramsToSign);
+    console.log('Generated signature:', signature);
 
     return NextResponse.json({
       signature,
       timestamp,
       cloudName: process.env.CLOUDINARY_CLOUD_NAME,
       apiKey: process.env.CLOUDINARY_API_KEY,
+      folder: folder,
     });
 
   } catch (error) {
